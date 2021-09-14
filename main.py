@@ -37,92 +37,102 @@ def op_color(piece):
 
 
 # adds to legal moves that move
-def check_move(board, color, x, y, i, j, piece):
+def check_move(board, color, x, y, i, j, piece, just_update_moves):
     try:
         cur_square: Square = board.grid[x + i][y + j]
     except IndexError:
         return False
+    cur_square.control[color] = True
+
     if cur_square.same_color(color):
         return False
-    board.legal_moves[(piece, cur_square)] = True
-    cur_square.control[color] = True
-    piece.Moves.append(cur_square)
 
-    if cur_square.is_empty():
-        # continue checking
+    # redundant ??
+    if just_update_moves:
+        if cur_square.can_attack(color):
+            return False
+
+    if not just_update_moves:
+        board.legal_moves[(piece, cur_square)] = True
+
+        piece.Moves.append(cur_square)
+
+        if cur_square.is_empty():
+            # continue checking
+            return True
+
+        elif cur_square.can_attack(color):
+            # stop here
+            return False
+
+        # good move continue looking
         return True
-
-    elif cur_square.can_attack(color):
-        # stop here
-        return False
-
-    # good move continue looking
     return True
 
 
-def check_left(Playing_board, color, x_pos, y_pos, piece):
+def check_left(Playing_board, color, x_pos, y_pos, piece, just_update_moves):
     i = -1
     while x_pos + i >= 0:
-        if check_move(Playing_board, color, x_pos, y_pos, i, 0, piece):
+        if check_move(Playing_board, color, x_pos, y_pos, i, 0, piece, just_update_moves):
             i -= 1
         else:
             break
 
 
-def check_right(Playing_board, color, x_pos, y_pos, piece):
+def check_right(Playing_board, color, x_pos, y_pos, piece, just_update_moves):
     i = 1
     while x_pos + i < COLS:
-        if check_move(Playing_board, color, x_pos, y_pos, i, 0, piece):
+        if check_move(Playing_board, color, x_pos, y_pos, i, 0, piece, just_update_moves):
             i += 1
         else:
             break
 
 
-def check_up(Playing_board, color, x_pos, y_pos, piece):
+def check_up(Playing_board, color, x_pos, y_pos, piece, just_update_moves):
     i = -1
     while y_pos + i >= 0:
-        if check_move(Playing_board, color, x_pos, y_pos, 0, i, piece):
+        if check_move(Playing_board, color, x_pos, y_pos, 0, i, piece, just_update_moves):
             i -= 1
         else:
             break
 
 
-def check_down(Playing_board, color, x_pos, y_pos, piece):
+def check_down(Playing_board, color, x_pos, y_pos, piece, just_update_moves):
     i = 1
     while y_pos + i < COLS:
-        if check_move(Playing_board, color, x_pos, y_pos, 0, i, piece):
+        if check_move(Playing_board, color, x_pos, y_pos, 0, i, piece, just_update_moves):
             i += 1
         else:
             break
 
 
-def check_right_diag(Playing_board, color, x_pos, y_pos, piece):
+def check_right_diag(Playing_board, color, x_pos, y_pos, piece, just_update_moves):
     i = 1
     while x_pos + i < COLS and y_pos - i >= 0:
-        if check_move(Playing_board, color, x_pos, y_pos, i, -i, piece):
+        if check_move(Playing_board, color, x_pos, y_pos, i, -i, piece, just_update_moves):
             i += 1
         else:
             break
 
     i = -1
     while x_pos + i >= 0 and y_pos + i < COLS:
-        if check_move(Playing_board, color, x_pos, y_pos, i, -i, piece):
+        if check_move(Playing_board, color, x_pos, y_pos, i, -i, piece, just_update_moves):
             i -= 1
         else:
             break
 
 
-def check_left_diag(Playing_board, color, x_pos, y_pos, piece):
+def check_left_diag(Playing_board, color, x_pos, y_pos, piece, just_update_moves):
     i = 1
     while x_pos + i < COLS and y_pos + i < COLS:
-        if check_move(Playing_board, color, x_pos, y_pos, i, i, piece):
+        if check_move(Playing_board, color, x_pos, y_pos, i, i, piece, just_update_moves):
             i += 1
         else:
             break
 
     i = -1
     while x_pos + i >= 0 and y_pos + i >= 0:
-        if check_move(Playing_board, color, x_pos, y_pos, i, i, piece):
+        if check_move(Playing_board, color, x_pos, y_pos, i, i, piece, just_update_moves):
             i -= 1
         else:
             break
@@ -140,11 +150,33 @@ class Piece:
         self.Square = square
         self.Moves = []
 
+    def kill(self):
+        if self.Square is not None:
+            self.Square.Piece_on_Square = None
+        self.Square = None
+
+    def move_sim(self, target):
+        piece_on_target = target.Piece_on_Square
+        if piece_on_target is not None:
+            piece_on_target.Square = None
+
+        target.Piece_on_Square = None
+        if self.Square is not None:
+            self.Square.Piece_on_Square = None
+        self.Square = target
+        target.Piece_on_Square = self
+
     def move_piece(self, target_square, board):
         if (self, target_square) in board.legal_moves.keys():
             target_square: Square
+            # remove enemy piece from target square
+            piece_on_target = target_square.Piece_on_Square
+            if piece_on_target is not None:
+                piece_on_target.kill()
+
             # remove piece from square
-            self.Square.Piece_on_Square = None
+            if self.Square is not None:
+                self.Square.Piece_on_Square = None
             # move piece to target square
             self.Square = target_square
             # update the piece on the new square
@@ -153,12 +185,66 @@ class Piece:
             # success
             if hasattr(self, "moved_flag"):
                 self.moved_flag = True
+
             return True
         else:
+
             return False
 
-    def on_click(self, grid):
-        self.Generate_Moves(grid)
+    def update_moves(self, board):
+
+        if self.Color == 'b':
+            king = board.pieces['k'][0]
+        elif self.Color == 'w':
+            king = board.pieces['K'][0]
+
+        to_pop = []
+        for move in self.Moves:
+            target_square = move
+            # save the original piece on target
+            piece_on_target: Piece = move.Piece_on_Square
+
+            # move self - to target
+            self.move_sim(move)
+            # update controlls - check if king in check
+            board.Update_Square_Controllers()
+
+            if king.in_check():
+                to_pop.append(move)
+
+            # return original piece to target
+            if piece_on_target is not None:
+
+                piece_on_target.move_sim(target_square)
+
+
+        for move_to_remove in to_pop:
+            self.Moves.remove(move_to_remove)
+
+
+
+
+
+    def on_click(self, board):
+        if self.Color == 'b':
+            king = board.pieces['k'][0]
+        else:
+            king = board.pieces['K'][0]
+
+        self.Generate_Moves(board)
+        self.Generate_Moves(board)
+
+        # save the square of self
+        first_square = self.Square
+
+        print(self.Moves)
+        # move simulations of self
+        self.update_moves(board)
+        #self.update_moves(board)
+        # return self to it's original square
+        print(self.Moves)
+
+        self.move_sim(first_square)
 
         for square in self.Moves:
             square.draw_dot = True
@@ -176,10 +262,11 @@ class King(Piece):
     def __repr__(self):
         return str(self.Square) + self.Name + self.Color
 
-    def Generate_Moves(self, Playing_board):
+    def Generate_Moves(self, Playing_board, just_update_squares=False):
         grid = Playing_board.grid
-        self.Moves = []
-        Playing_board.legal_moves = {}
+        if not just_update_squares:
+            self.Moves = []
+            Playing_board.legal_moves = {}
         move_range = [-1, 0, 1]
         x_pos = self.Square.X
         y_pos = self.Square.Y
@@ -197,30 +284,38 @@ class King(Piece):
                 if 0 <= x_pos + i <= 7 and 0 <= y_pos + j <= 7:
                     cur_square: Square = grid[x_pos + i][y_pos + j]
                     cur_square.control[color] = True
-                    # if the square is in control of the opposite color - continue
-                    if op_color in cur_square.control:
-                        continue
-                    if cur_square.is_empty() or cur_square.can_attack(color):
-                        self.Moves.append(cur_square)
-                        Playing_board.legal_moves[(self, cur_square)] = True
+                    if not just_update_squares:
+                        # if the square is in control of the opposite color - continue
+                        if op_color in cur_square.control:
+                            continue
+                        if cur_square.is_empty() or cur_square.can_attack(color):
+                            self.Moves.append(cur_square)
+                            Playing_board.legal_moves[(self, cur_square)] = True
 
+    def in_check(self):
+        if op_color(self) in self.Square.control:
+            return True
+        return False
 
 class Quin(Piece):
     pass
 
-    def Generate_Moves(self, Playing_board):
-        self.Moves = []
-        Playing_board.legal_moves = {}
+    def Generate_Moves(self, Playing_board, just_update_squares=False):
+        if not just_update_squares:
+            self.Moves = []
+            Playing_board.legal_moves = {}
+        if self.Square is None:
+            return
         x_pos = self.Square.X
         y_pos = self.Square.Y
         color = self.Color
 
-        check_left(Playing_board, color, x_pos, y_pos, self)
-        check_right(Playing_board, color, x_pos, y_pos, self)
-        check_up(Playing_board, color, x_pos, y_pos, self)
-        check_down(Playing_board, color, x_pos, y_pos, self)
-        check_right_diag(Playing_board, color, x_pos, y_pos, self)
-        check_left_diag(Playing_board, color, x_pos, y_pos, self)
+        check_left(Playing_board, color, x_pos, y_pos, self, just_update_squares)
+        check_right(Playing_board, color, x_pos, y_pos, self, just_update_squares)
+        check_up(Playing_board, color, x_pos, y_pos, self, just_update_squares)
+        check_down(Playing_board, color, x_pos, y_pos, self, just_update_squares)
+        check_right_diag(Playing_board, color, x_pos, y_pos, self, just_update_squares)
+        check_left_diag(Playing_board, color, x_pos, y_pos, self, just_update_squares)
 
 
 class Pawn(Piece):
@@ -228,9 +323,11 @@ class Pawn(Piece):
         super().__init__(id, value, color, name, image, square, number)
         self.moved_flag = False
 
-    def Generate_Moves(self, Playing_board):
+    def Generate_Moves(self, Playing_board, just_update_squares=False):
         grid = Playing_board.grid
-        self.Moves = []
+        if not just_update_squares:
+            self.Moves = []
+
         x_pos = self.Square.X
         y_pos = self.Square.Y
         color = self.Color
@@ -260,38 +357,46 @@ class Pawn(Piece):
 
                 if self.moved_flag is False:
                     advance_squares.append(grid[x_pos][y_pos + 2])
+        if not just_update_squares:
+            for square in advance_squares:
+                if square.is_empty():
+                    self.Moves.append(square)
+                    Playing_board.legal_moves[(self, square)] = True
 
-        for square in advance_squares:
-            if square.is_empty():
-                self.Moves.append(square)
-                Playing_board.legal_moves[(self, square)] = True
+            for square in attack_squares:
+                square.control[color] = True
+                if square.diff_color(color):
+                    self.Moves.append(square)
+                    Playing_board.legal_moves[(self, square)] = True
+        else:
+            for square in attack_squares:
+                square.control[color] = True
 
-        for square in attack_squares:
-            square.control[color] = True
-            if square.diff_color(color):
-                self.Moves.append(square)
-                Playing_board.legal_moves[(self, square)] = True
 
 
 class Rook(Piece):
 
-    def Generate_Moves(self, Playing_board):
-        self.Moves = []
-        Playing_board.legal_moves = {}
+    def Generate_Moves(self, Playing_board, just_update_squares=False):
+
+        if not just_update_squares:
+            self.Moves = []
+            Playing_board.legal_moves = {}
+
         x_pos = self.Square.X
         y_pos = self.Square.Y
         color = self.Color
-        check_left(Playing_board, color, x_pos, y_pos, self)
-        check_right(Playing_board, color, x_pos, y_pos, self)
-        check_up(Playing_board, color, x_pos, y_pos, self)
-        check_down(Playing_board, color, x_pos, y_pos, self)
+        check_left(Playing_board, color, x_pos, y_pos, self, just_update_squares)
+        check_right(Playing_board, color, x_pos, y_pos, self, just_update_squares)
+        check_up(Playing_board, color, x_pos, y_pos, self, just_update_squares)
+        check_down(Playing_board, color, x_pos, y_pos, self, just_update_squares)
 
 
 class Knight(Piece):
     # if ((abs(i - self.Pos[0]) + abs(j - self.Pos[1])) == 3 and (i > 0) and (j > 0) and j < board_size + 1 and i < board_size + 1):
-    def Generate_Moves(self, Playing_board):
-        self.Moves = []
-        Playing_board.legal_moves = {}
+    def Generate_Moves(self, Playing_board, just_update_squares=False):
+        if not just_update_squares:
+            self.Moves = []
+            Playing_board.legal_moves = {}
         x_pos = self.Square.X
         y_pos = self.Square.Y
         color = self.Color
@@ -299,19 +404,20 @@ class Knight(Piece):
             for j in range(-2, 3):
                 if 0 <= x_pos + i < COLS and 0 <= y_pos + j < COLS:
                     if abs(i) + abs(j) == 3:
-                        check_move(Playing_board, color, x_pos, y_pos, i, j, self)
+                        check_move(Playing_board, color, x_pos, y_pos, i, j, self, just_update_squares)
 
 
 class Bishop(Piece):
 
-    def Generate_Moves(self, Playing_board):
-        self.Moves = []
-        Playing_board.legal_moves = {}
+    def Generate_Moves(self, Playing_board, just_update_squares=False):
+        if not just_update_squares:
+            self.Moves = []
+            Playing_board.legal_moves = {}
         x_pos = self.Square.X
         y_pos = self.Square.Y
         color = self.Color
-        check_right_diag(Playing_board, color, x_pos, y_pos, self)
-        check_left_diag(Playing_board, color, x_pos, y_pos, self)
+        check_right_diag(Playing_board, color, x_pos, y_pos, self, just_update_squares)
+        check_left_diag(Playing_board, color, x_pos, y_pos, self, just_update_squares)
 
 
 class Board:
@@ -375,7 +481,8 @@ class Board:
                 else:
                     self.black_in_check = False
 
-        print('White: ', self.white_in_check, "Black: ", self.black_in_check)
+        print('White: ', self.white_in_check, " Black: ", self.black_in_check)
+
 
     def legal_moves_reset(self):
         self.legal_moves = {}
@@ -465,6 +572,8 @@ class Board:
     def grid_to_numpy_arr(self):
         pass
 
+
+
     def square_occupied(self, x, y):
         return self.grid[x][y].is_piece()
 
@@ -477,14 +586,15 @@ class Board:
         elif self.turn == 'b':
             self.turn = 'w'
 
-    def All_Generate_Moves(self):
+
+    def Update_Square_Controllers(self):
         # before Generating moves again - clear the controls
         self.reset_control()
-        self.legal_moves = {}
 
         for piece_stacks in self.pieces.values():
             for piece in piece_stacks:
-                piece.Generate_Moves(self)
+                if piece.Square is not None:
+                    piece.Generate_Moves(self, just_update_squares=True)
 
 
 # X IS NUMBER OF COLUMN
@@ -563,12 +673,16 @@ def main(window):
     clicked = False
     running = True
     try:
-        board.parse_fen_code('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KkQq')
+        #board.parse_fen_code('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KkQq')
+        #board.parse_fen_code('8/8/1K5q/8/4B1Q1/8/8/k7 w KkQq')
+        board.parse_fen_code('8/8/1kn4Q/8/8/4b3/8/K7 b KkQq')
+        #board.parse_fen_code('8/8/2k5/8/8/4b3/3K4/8 w KkQq')
     except IndexError:
         print("not enough pieces - Invalid FEN code")
     piece_to_move: Piece = None
-    board.All_Generate_Moves()
+    board.Update_Square_Controllers()
     board.King_in_Check()
+    print("White: ", board.pieces['K'][0].in_check(), " Black: ", board.pieces['K'][0].in_check())
     while running:
         clock.tick(50)
         board.draw()
@@ -617,8 +731,9 @@ def main(window):
                             board.switch_turn()
                             piece_to_move = None
                             # update controlled squares
-                            board.All_Generate_Moves()
+                            #board.Update_Square_Controllers()
                             board.King_in_Check()
+                            print("White: ", board.pieces['K'][0].in_check(), " Black: ", board.pieces['K'][0].in_check())
 
             if event.type == pygame.MOUSEBUTTONUP:
                 clicked = False
