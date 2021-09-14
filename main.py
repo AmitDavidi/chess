@@ -1,5 +1,9 @@
 import pygame
+import os
+from pathlib import Path
 
+cwd = os.getcwd()
+images = os.path.join(cwd, "Resources")
 HEIGHT = 700
 WIDTH = 700
 COLS = 8
@@ -21,6 +25,7 @@ WHITE = (255, 255, 255)
 DARK_BROWN = (113, 81, 57)
 LIGHT_BROWN = (187, 159, 123)
 
+
 # returns the opposite color of the piece
 def op_color(piece):
     color = piece.Color
@@ -30,8 +35,9 @@ def op_color(piece):
         op_color = 'w'
     return op_color
 
+
 # adds to legal moves that move
-def check_move(board,color, x, y ,i, j,piece):
+def check_move(board, color, x, y, i, j, piece):
     try:
         cur_square: Square = board.grid[x + i][y + j]
     except IndexError:
@@ -53,6 +59,7 @@ def check_move(board,color, x, y ,i, j,piece):
     # good move continue looking
     return True
 
+
 def check_left(Playing_board, color, x_pos, y_pos, piece):
     i = -1
     while x_pos + i >= 0:
@@ -60,6 +67,7 @@ def check_left(Playing_board, color, x_pos, y_pos, piece):
             i -= 1
         else:
             break
+
 
 def check_right(Playing_board, color, x_pos, y_pos, piece):
     i = 1
@@ -102,7 +110,6 @@ def check_right_diag(Playing_board, color, x_pos, y_pos, piece):
             i -= 1
         else:
             break
-
 
 
 def check_left_diag(Playing_board, color, x_pos, y_pos, piece):
@@ -155,15 +162,17 @@ class Piece:
 
         for square in self.Moves:
             square.draw_dot = True
-            square.Color = (square.Color[0]*1.2, square.Color[1]*1.2, square.Color[2]*1.2)
+            square.Color = (square.Color[0] * 1.2, square.Color[1] * 1.2, square.Color[2] * 1.2)
 
     def on_release(self):
         for square in self.Moves:
             square.draw_dot = False
             square.Color = square.Holder
 
+
 class King(Piece):
     pass
+
     def __repr__(self):
         return str(self.Square) + self.Name + self.Color
 
@@ -200,7 +209,6 @@ class Quin(Piece):
     pass
 
     def Generate_Moves(self, Playing_board):
-
         self.Moves = []
         Playing_board.legal_moves = {}
         x_pos = self.Square.X
@@ -213,9 +221,6 @@ class Quin(Piece):
         check_down(Playing_board, color, x_pos, y_pos, self)
         check_right_diag(Playing_board, color, x_pos, y_pos, self)
         check_left_diag(Playing_board, color, x_pos, y_pos, self)
-
-
-
 
 
 class Pawn(Piece):
@@ -297,8 +302,6 @@ class Knight(Piece):
                         check_move(Playing_board, color, x_pos, y_pos, i, j, self)
 
 
-
-
 class Bishop(Piece):
 
     def Generate_Moves(self, Playing_board):
@@ -327,25 +330,27 @@ class Board:
         self.white_in_check = False
         self.en_passant_square = None
 
-        self.pieces = {'k': [King(1, float('inf'), 'b', 'k', pygame.image.load('Resources\\bk.png'))],
-                       'K': [King(1, float('inf'), 'w', 'k', pygame.image.load('Resources\\wk.png'))],
-                       'q': [Quin(2, 9, "b", 'q', pygame.image.load('Resources\\bq.png'))],
-                       'Q': [Quin(2, 9, "w", 'Q', pygame.image.load('Resources\\wq.png'))],
-                       'r': [Rook(3, 5, "b", 'r', pygame.image.load('Resources\\br.png')),
-                             Rook(3, 5, "b", 'r', pygame.image.load('Resources\\br.png'), number=2)],
-                       'R': [Rook(3, 5, "w", 'R', pygame.image.load('Resources\\wr.png')),
-                             Rook(3, 5, "w", 'R', pygame.image.load('Resources\\wr.png'), number=2)],
-                       'n': [Knight(4, 3, "b", 'n', pygame.image.load('Resources\\bn.png')),
-                             Knight(4, 3, "b", 'n', pygame.image.load('Resources\\bn.png'), number=2)],
-                       'N': [Knight(4, 3, "w", 'N', pygame.image.load('Resources\\wn.png')),
-                             Knight(4, 3, "w", 'N', pygame.image.load('Resources\\wn.png'), number=2)],
-                       'b': [Bishop(5, 3, "b", 'b', pygame.image.load('Resources\\bb.png')),
-                             Bishop(5, 3, "b", 'b', pygame.image.load('Resources\\bb.png'), number=2)],
-                       'B': [Bishop(5, 3, "w", 'B', pygame.image.load('Resources\\wb.png')),
-                             Bishop(5, 3, "w", 'B', pygame.image.load('Resources\\wb.png'), number=2)],
-                       'p': [Pawn(6, 1, "b", 'p', pygame.image.load('Resources\\bp.png'), number=number) for number in
+        self.pieces = {'k': [King(1, float('inf'), 'b', 'k', pygame.image.load(os.path.join(images, "bk.png")))],
+                       'K': [King(1, float('inf'), 'w', 'k', pygame.image.load(os.path.join(images, "wk.png")))],
+                       'q': [Quin(2, 9, "b", 'q', pygame.image.load(os.path.join(images, 'bq.png')))],
+                       'Q': [Quin(2, 9, "w", 'Q', pygame.image.load(os.path.join(images, 'wq.png')))],
+                       'r': [Rook(3, 5, "b", 'r', pygame.image.load(os.path.join(images, 'br.png'))),
+                             Rook(3, 5, "b", 'r', pygame.image.load(os.path.join(images, 'br.png')), number=2)],
+                       'R': [Rook(3, 5, "w", 'R', pygame.image.load(os.path.join(images, 'wr.png'))),
+                             Rook(3, 5, "w", 'R', pygame.image.load(os.path.join(images, 'wr.png')), number=2)],
+                       'n': [Knight(4, 3, "b", 'n', pygame.image.load(os.path.join(images, 'bn.png'))),
+                             Knight(4, 3, "b", 'n', pygame.image.load(os.path.join(images, 'bn.png')), number=2)],
+                       'N': [Knight(4, 3, "w", 'N', pygame.image.load(os.path.join(images, 'wn.png'))),
+                             Knight(4, 3, "w", 'N', pygame.image.load(os.path.join(images, 'wn.png')), number=2)],
+                       'b': [Bishop(5, 3, "b", 'b', pygame.image.load(os.path.join(images, 'bb.png'))),
+                             Bishop(5, 3, "b", 'b', pygame.image.load(os.path.join(images, 'bb.png')), number=2)],
+                       'B': [Bishop(5, 3, "w", 'B', pygame.image.load(os.path.join(images, 'wb.png'))),
+                             Bishop(5, 3, "w", 'B', pygame.image.load(os.path.join(images, 'wb.png')), number=2)],
+                       'p': [Pawn(6, 1, "b", 'p', pygame.image.load(os.path.join(images, 'bp.png')), number=number) for
+                             number in
                              range(1, 9)],
-                       'P': [Pawn(6, 1, "w", 'P', pygame.image.load('Resources\\wp.png'), number=number) for number in
+                       'P': [Pawn(6, 1, "w", 'P', pygame.image.load(os.path.join(images, 'wp.png')), number=number) for
+                             number in
                              range(1, 9)]}
 
     def draw(self):
@@ -371,10 +376,6 @@ class Board:
                     self.black_in_check = False
 
         print('White: ', self.white_in_check, "Black: ", self.black_in_check)
-
-
-
-
 
     def legal_moves_reset(self):
         self.legal_moves = {}
@@ -430,6 +431,7 @@ class Board:
 
             elif char.isalpha() and char in constants['Chess_Pieces']:
                 j = i // COLS
+
                 self.grid[i - (j * 8)][j].set_piece(char, self.pieces, self.piece_nums)
                 i += 1
 
@@ -483,9 +485,6 @@ class Board:
         for piece_stacks in self.pieces.values():
             for piece in piece_stacks:
                 piece.Generate_Moves(self)
-
-
-
 
 
 # X IS NUMBER OF COLUMN
@@ -575,8 +574,8 @@ def main(window):
         board.draw()
         pygame.display.update()
         x, y = pygame.mouse.get_pos()
-        x = x // SQUARE_SIZE
-        y = y // SQUARE_SIZE
+        x = min(x // SQUARE_SIZE, COLS - 1)
+        y = min(y // SQUARE_SIZE, COLS - 1)
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -621,9 +620,11 @@ def main(window):
                             board.All_Generate_Moves()
                             board.King_in_Check()
 
-
             if event.type == pygame.MOUSEBUTTONUP:
                 clicked = False
 
 
-main(WIN)
+try:
+    main(WIN)
+except FileNotFoundError:
+    print("your working directory is not set")
