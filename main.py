@@ -214,24 +214,18 @@ class Piece:
 
             # return original piece to target
             if piece_on_target is not None:
-
                 piece_on_target.move_sim(target_square)
-
 
         for move_to_remove in to_pop:
             self.Moves.remove(move_to_remove)
 
-
-
-
-
     def on_click(self, board):
+        board.reset_control()
         if self.Color == 'b':
             king = board.pieces['k'][0]
         else:
             king = board.pieces['K'][0]
 
-        self.Generate_Moves(board)
         self.Generate_Moves(board)
 
         # save the square of self
@@ -240,7 +234,7 @@ class Piece:
         print(self.Moves)
         # move simulations of self
         self.update_moves(board)
-        #self.update_moves(board)
+
         # return self to it's original square
         print(self.Moves)
 
@@ -296,6 +290,7 @@ class King(Piece):
         if op_color(self) in self.Square.control:
             return True
         return False
+
 
 class Quin(Piece):
     pass
@@ -373,11 +368,9 @@ class Pawn(Piece):
                 square.control[color] = True
 
 
-
 class Rook(Piece):
 
     def Generate_Moves(self, Playing_board, just_update_squares=False):
-
         if not just_update_squares:
             self.Moves = []
             Playing_board.legal_moves = {}
@@ -392,7 +385,8 @@ class Rook(Piece):
 
 
 class Knight(Piece):
-    # if ((abs(i - self.Pos[0]) + abs(j - self.Pos[1])) == 3 and (i > 0) and (j > 0) and j < board_size + 1 and i < board_size + 1):
+    # if ((abs(i - self.Pos[0]) + abs(j - self.Pos[1])) == 3 and (i > 0) and (j > 0) and j < board_size + 1 and i <
+    # board_size + 1):
     def Generate_Moves(self, Playing_board, just_update_squares=False):
         if not just_update_squares:
             self.Moves = []
@@ -483,7 +477,6 @@ class Board:
 
         print('White: ', self.white_in_check, " Black: ", self.black_in_check)
 
-
     def legal_moves_reset(self):
         self.legal_moves = {}
 
@@ -572,8 +565,6 @@ class Board:
     def grid_to_numpy_arr(self):
         pass
 
-
-
     def square_occupied(self, x, y):
         return self.grid[x][y].is_piece()
 
@@ -585,7 +576,6 @@ class Board:
             self.turn = 'b'
         elif self.turn == 'b':
             self.turn = 'w'
-
 
     def Update_Square_Controllers(self):
         # before Generating moves again - clear the controls
@@ -673,10 +663,10 @@ def main(window):
     clicked = False
     running = True
     try:
-        #board.parse_fen_code('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KkQq')
-        #board.parse_fen_code('8/8/1K5q/8/4B1Q1/8/8/k7 w KkQq')
-        board.parse_fen_code('8/8/1kn4Q/8/8/4b3/8/K7 b KkQq')
-        #board.parse_fen_code('8/8/2k5/8/8/4b3/3K4/8 w KkQq')
+        board.parse_fen_code('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KkQq')
+        # board.parse_fen_code('8/8/1K5q/8/4B1Q1/8/8/k7 w KkQq')
+        # board.parse_fen_code('8/8/2k5/8/8/4b3/3K4/8 w KkQq')
+        #board.parse_fen_code('8/6K1/1p1B1RB1/8/2Q5/2n1kP1N/3b4/4n3 w')
     except IndexError:
         print("not enough pieces - Invalid FEN code")
     piece_to_move: Piece = None
@@ -731,9 +721,10 @@ def main(window):
                             board.switch_turn()
                             piece_to_move = None
                             # update controlled squares
-                            #board.Update_Square_Controllers()
+                            # board.Update_Square_Controllers()
                             board.King_in_Check()
-                            print("White: ", board.pieces['K'][0].in_check(), " Black: ", board.pieces['K'][0].in_check())
+                            print("White: ", board.pieces['K'][0].in_check(), " Black: ",
+                                  board.pieces['K'][0].in_check())
 
             if event.type == pygame.MOUSEBUTTONUP:
                 clicked = False
