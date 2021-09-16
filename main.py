@@ -152,7 +152,6 @@ class Piece:
 
         self.Square = square
         self.Moves = []
-
     def kill(self):
         if self.Square is not None:
             self.Square.Piece_on_Square = None
@@ -177,6 +176,24 @@ class Piece:
             if piece_on_target is not None:
                 piece_on_target.kill()
 
+            # if en_passant available - check if this is an en_passant
+            elif board.en_pass :
+                if isinstance(self, Pawn):
+                    if board.flip:
+                        if self.Color == 'w':
+                            en_passant_square = board.grid[target_square.X][target_square.Y - 1]
+                        else:
+                            en_passant_square = board.grid[target_square.X][target_square.Y + 1]
+                    else:
+                        if self.Color == 'w':
+                            en_passant_square = board.grid[target_square.X][target_square.Y + 1]
+                        else:
+                            en_passant_square = board.grid[target_square.X][target_square.Y -1]
+
+                    en_passant_square.Piece_on_Square.kill()
+                    print(en_passant_square)
+
+
             # remove piece from square
             if self.Square is not None:
                 self.Square.Piece_on_Square = None
@@ -186,7 +203,17 @@ class Piece:
             target_square.Piece_on_Square = self
             self.Moves = []
             # success
+            if board.en_pass:
+                for pawn in board.pieces['p'] + board.pieces['P']:
+                    if pawn.en_passant:
+                        pawn.en_passant = False
+                board.en_pass = False
             if hasattr(self, "moved_flag"):
+                if self.Square.Y in [3, 4] and not self.moved_flag:
+                    self.en_passant = True
+                    board.en_pass = True
+
+
                 if self.Square.Y in [0, 7]:
                     square = self.Square
                     self.kill()
@@ -223,6 +250,7 @@ class Piece:
                     board.white_castle_quin = False
                     board.white_castle_king = False
                 self.king_moved = True
+
 
 
             return True
@@ -434,6 +462,7 @@ class Pawn(Piece):
     def __init__(self, id, value, color, name, image, square=None, number=1):
         super().__init__(id, value, color, name, image, square, number)
         self.moved_flag = False
+        self.en_passant = False
 
     def Generate_Moves(self, Playing_board, just_update_squares=False):
         grid = Playing_board.grid
@@ -485,15 +514,35 @@ class Pawn(Piece):
 
         if not just_update_squares:
             for square in advance_squares:
-                if square.is_empty():
+                if square.is_empty() :
                     self.Moves.append(square)
                     Playing_board.legal_moves[(self, square)] = True
 
             for square in attack_squares:
                 square.control[color] = True
-                if square.diff_color(color):
+                # generate en_passant_square
+                bool_en_p = False
+
+                if not flip:
+                    if self.Color == 'w':
+                        en_passant_square = grid[square.X][square.Y + 1]
+                    else:
+                        en_passant_square = grid[square.X][square.Y - 1]
+
+                else:
+                    if self.Color == 'w':
+                        en_passant_square = grid[square.X][square.Y - 1]
+                    else:
+                        en_passant_square = grid[square.X][square.Y + 1]
+
+                # if piece on en_passant is a pawn
+                if isinstance(en_passant_square.Piece_on_Square, Pawn):
+                    bool_en_p = en_passant_square.Piece_on_Square.en_passant
+
+                if square.diff_color(color) or bool_en_p:
                     self.Moves.append(square)
                     Playing_board.legal_moves[(self, square)] = True
+
         else:
             for square in attack_squares:
                 square.control[color] = True
@@ -554,7 +603,7 @@ class Board:
         self.window = window
         self.grid = []
         self.turn = None
-
+        self.en_pass = False # bool expression - if en passant is available
         self.black_castle_quin = False
         self.black_castle_king = False
         self.white_castle_quin = False
@@ -935,7 +984,8 @@ def main(window):
     running = True
     try:
         # board.parse_fen_code('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KkQq')
-        board.parse_fen_code('r3k2r/pppppppp/8/8/8/8/PPPPPPPP/R3K2R w KkQq')
+        #board.parse_fen_code('rnbqkbnr/pp1ppp1p/6p1/2p1P3/8/8/PPPP1PPP/RNBQKBNR b KQkq')
+        board.parse_fen_code("rnbqkbnr/1ppppppp/8/p2P4/8/8/PPP1PPPP/RNBQKBNR b KQkq")
         # board.parse_fen_code('8/8/1K5q/8/4B1Q1/8/8/k7 w KkQq')
         # board.parse_fen_code('8/8/2k5/8/8/4b3/3K4/8 w KkQq')
         # board.parse_fen_code('8/6K1/1p1B1RB1/8/2Q5/2n1kP1N/3b4/4n3 w')
