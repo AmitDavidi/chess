@@ -335,7 +335,13 @@ class Pawn(Piece):
         color = self.Color
         advance_squares = []
         attack_squares = []
-        if color == 'w':
+        flip = Playing_board.flip
+        if flip:
+            flip_color = op_color(self)
+        else:
+            flip_color = color
+
+        if flip_color == 'w':
             for i in [-1, 1]:
                 try:
                     attack_squares.append(grid[x_pos + i][y_pos - 1])
@@ -432,6 +438,7 @@ class Board:
         self.white_castle_quin = False
         self.white_castle_king = False
         self.legal_moves = {}
+        self.flip = False
         self.made_ill = False
         self.piece_nums = {}
         self.black_in_check = False
@@ -462,7 +469,8 @@ class Board:
                              number in
                              range(1, 9)]}
 
-    def draw(self, reverse=False):
+    def draw(self):
+
         col_range = range(COLS)
         for i in col_range:
             # for row in self.grid:
@@ -523,6 +531,16 @@ class Board:
 
     # not including times
     def parse_fen_code(self, code: str):
+        last = None
+        for char in code:
+            if last == ' ':
+                if char == 'w':
+                    flip = False
+                elif char == 'b':
+                    flip = True
+            last = char
+
+        self.flip = flip
         self.clear_board()
         i = 0
         code_len = len(code)
@@ -541,8 +559,10 @@ class Board:
 
             elif char.isalpha() and char in constants['Chess_Pieces']:
                 j = i // COLS
-
-                self.grid[i - (j * 8)][j].set_piece(char, self.pieces, self.piece_nums)
+                if not flip:
+                    self.grid[i - (j * 8)][j].set_piece(char, self.pieces, self.piece_nums)
+                else:
+                    self.grid[abs(i - (j * 8) - 7)][abs(j - 7)].set_piece(char, self.pieces, self.piece_nums)
                 i += 1
 
         if index == code_len - 1:
@@ -575,14 +595,21 @@ class Board:
 
     # fixes the pawns' first move rights - double advance - after parsing a FEN code
     def fix_pawns(self):
+        if self.flip:
+            black_line = 6
+            white_line = 1
+        else:
+            black_line = 1
+            white_line = 6
+
         for black_pawn in self.pieces['p']:
             if black_pawn.Square is not None:
-                if black_pawn.Square.Y != 1:
+                if black_pawn.Square.Y != black_line:
                     black_pawn.moved_flag = True
 
         for white_pawn in self.pieces['P']:
             if white_pawn.Square is not None:
-                if white_pawn.Square.Y != 6:
+                if white_pawn.Square.Y != white_line:
                     white_pawn.moved_flag = True
 
     def grid_to_numpy_arr(self):
@@ -683,11 +710,11 @@ def main(window):
     clicked = False
     running = True
     try:
-        # board.parse_fen_code('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KkQq')
+        # board.parse_fen_code('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KkQq')
         # board.parse_fen_code('8/8/1K5q/8/4B1Q1/8/8/k7 w KkQq')
         # board.parse_fen_code('8/8/2k5/8/8/4b3/3K4/8 w KkQq')
-        board.parse_fen_code('8/6K1/1p1B1RB1/8/2Q5/2n1kP1N/3b4/4n3 w')
-    # board.parse_fen_code('2bqkbn1/2pppp2/np2N3/r3P1p1/p2N2B1/5Q2/PPPPKPP1/RNB2r2 w KQkq')
+        # board.parse_fen_code('8/6K1/1p1B1RB1/8/2Q5/2n1kP1N/3b4/4n3 w')
+        # board.parse_fen_code('2bqkbn1/2pppp2/np2N3/r3P1p1/p2N2B1/5Q2/PPPPKPP1/RNB2r2 b KQkq')
     except IndexError:
         print("not enough pieces - Invalid FEN code")
     piece_to_move: Piece = None
