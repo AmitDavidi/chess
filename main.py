@@ -1,6 +1,5 @@
-import pygame
 import os
-from pathlib import Path
+import pygame
 
 cwd = os.getcwd()
 images = os.path.join(cwd, "Resources")
@@ -34,6 +33,16 @@ def op_color(piece):
     elif color == 'b':
         op_color = 'w'
     return op_color
+
+
+# returns Queen
+def Make_Queen(piece):
+    if piece.Color == 'b':
+        name = 'q'
+        return Quin(2, 9, piece.Color, name, pygame.image.load(os.path.join(images, 'bq.png')))
+    elif piece.Color == 'w':
+        name = 'Q'
+        return Quin(2, 9, piece.Color, name, pygame.image.load(os.path.join(images, 'wq.png')))
 
 
 # adds to legal moves that move
@@ -184,11 +193,14 @@ class Piece:
             self.Moves = []
             # success
             if hasattr(self, "moved_flag"):
+                if self.Square.Y in [0, 7]:
+                    self = Make_Queen(self)
                 self.moved_flag = True
-
+            board.made_ill = False
             return True
         else:
-
+            board.made_ill = True
+            return False
             return False
 
     def update_moves(self, board):
@@ -206,7 +218,7 @@ class Piece:
 
             # move self - to target
             self.move_sim(move)
-            # update controlls - check if king in check
+            # update controls - check if king in check
             board.Update_Square_Controllers()
 
             if king.in_check():
@@ -218,6 +230,7 @@ class Piece:
 
         for move_to_remove in to_pop:
             self.Moves.remove(move_to_remove)
+            board.legal_moves.pop((self, move_to_remove))
 
     def on_click(self, board):
         board.reset_control()
@@ -227,17 +240,11 @@ class Piece:
             king = board.pieces['K'][0]
 
         self.Generate_Moves(board)
-
         # save the square of self
         first_square = self.Square
-
-        print(self.Moves)
         # move simulations of self
         self.update_moves(board)
-
         # return self to it's original square
-        print(self.Moves)
-
         self.move_sim(first_square)
 
         for square in self.Moves:
@@ -425,6 +432,7 @@ class Board:
         self.white_castle_quin = False
         self.white_castle_king = False
         self.legal_moves = {}
+        self.made_ill = False
         self.piece_nums = {}
         self.black_in_check = False
         self.white_in_check = False
@@ -432,31 +440,35 @@ class Board:
 
         self.pieces = {'k': [King(1, float('inf'), 'b', 'k', pygame.image.load(os.path.join(images, "bk.png")))],
                        'K': [King(1, float('inf'), 'w', 'k', pygame.image.load(os.path.join(images, "wk.png")))],
-                       'q': [Quin(2, 9, "b", 'q', pygame.image.load(os.path.join(images, 'bq.png')))],
-                       'Q': [Quin(2, 9, "w", 'Q', pygame.image.load(os.path.join(images, 'wq.png')))],
-                       'r': [Rook(3, 5, "b", 'r', pygame.image.load(os.path.join(images, 'br.png'))),
-                             Rook(3, 5, "b", 'r', pygame.image.load(os.path.join(images, 'br.png')), number=2)],
-                       'R': [Rook(3, 5, "w", 'R', pygame.image.load(os.path.join(images, 'wr.png'))),
-                             Rook(3, 5, "w", 'R', pygame.image.load(os.path.join(images, 'wr.png')), number=2)],
-                       'n': [Knight(4, 3, "b", 'n', pygame.image.load(os.path.join(images, 'bn.png'))),
-                             Knight(4, 3, "b", 'n', pygame.image.load(os.path.join(images, 'bn.png')), number=2)],
-                       'N': [Knight(4, 3, "w", 'N', pygame.image.load(os.path.join(images, 'wn.png'))),
-                             Knight(4, 3, "w", 'N', pygame.image.load(os.path.join(images, 'wn.png')), number=2)],
-                       'b': [Bishop(5, 3, "b", 'b', pygame.image.load(os.path.join(images, 'bb.png'))),
-                             Bishop(5, 3, "b", 'b', pygame.image.load(os.path.join(images, 'bb.png')), number=2)],
-                       'B': [Bishop(5, 3, "w", 'B', pygame.image.load(os.path.join(images, 'wb.png'))),
-                             Bishop(5, 3, "w", 'B', pygame.image.load(os.path.join(images, 'wb.png')), number=2)],
+                       'q': [Quin(2, 9, "b", 'q', pygame.image.load(os.path.join(images, 'bq.png')), number=number) for
+                             number in range(1, 9)],
+                       'Q': [Quin(2, 9, "w", 'Q', pygame.image.load(os.path.join(images, 'wq.png')), number=number) for
+                             number in range(1, 9)],
+                       'r': [Rook(3, 5, "b", 'r', pygame.image.load(os.path.join(images, 'br.png')), number=number) for
+                             number in range(1, 9)],
+                       'R': [Rook(3, 5, "w", 'R', pygame.image.load(os.path.join(images, 'wr.png')), number=number) for
+                             number in range(1, 9)],
+                       'n': [Knight(4, 3, "b", 'n', pygame.image.load(os.path.join(images, 'bn.png')), number=number)
+                             for number in range(1, 9)],
+                       'N': [Knight(4, 3, "w", 'N', pygame.image.load(os.path.join(images, 'wn.png')), number=number)
+                             for number in range(1, 9)],
+                       'b': [Bishop(5, 3, "b", 'b', pygame.image.load(os.path.join(images, 'bb.png')), number=number)
+                             for number in range(1, 9)],
+                       'B': [Bishop(5, 3, "w", 'B', pygame.image.load(os.path.join(images, 'wb.png')), number=number)
+                             for number in range(1, 9)],
                        'p': [Pawn(6, 1, "b", 'p', pygame.image.load(os.path.join(images, 'bp.png')), number=number) for
-                             number in
-                             range(1, 9)],
+                             number in range(1, 9)],
                        'P': [Pawn(6, 1, "w", 'P', pygame.image.load(os.path.join(images, 'wp.png')), number=number) for
                              number in
                              range(1, 9)]}
 
-    def draw(self):
-        for row in self.grid:
-            for square in row:
-                square: Square
+    def draw(self, reverse=False):
+        col_range = range(COLS)
+        for i in col_range:
+            # for row in self.grid:
+            for j in col_range:
+                # for square in row:
+                square: Square = self.grid[i][j]
                 square.draw_square(self.window)
                 if square.draw_dot:
                     pygame.draw.circle(WIN, BLACK, square.rect.center, 3)
@@ -474,8 +486,6 @@ class Board:
                     self.white_in_check = False
                 else:
                     self.black_in_check = False
-
-        print('White: ', self.white_in_check, " Black: ", self.black_in_check)
 
     def legal_moves_reset(self):
         self.legal_moves = {}
@@ -561,15 +571,25 @@ class Board:
         # advance to an passant skip space
         index += 1
         self.en_passant_square = code[index:]
+        self.fix_pawns()
+
+    # fixes the pawns' first move rights - double advance - after parsing a FEN code
+    def fix_pawns(self):
+        for black_pawn in self.pieces['p']:
+            if black_pawn.Square is not None:
+                if black_pawn.Square.Y != 1:
+                    black_pawn.moved_flag = True
+
+        for white_pawn in self.pieces['P']:
+            if white_pawn.Square is not None:
+                if white_pawn.Square.Y != 6:
+                    white_pawn.moved_flag = True
 
     def grid_to_numpy_arr(self):
         pass
 
     def square_occupied(self, x, y):
         return self.grid[x][y].is_piece()
-
-    def printf(self):
-        pass
 
     def switch_turn(self):
         if self.turn == 'w':
@@ -663,16 +683,17 @@ def main(window):
     clicked = False
     running = True
     try:
-        board.parse_fen_code('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KkQq')
+        # board.parse_fen_code('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KkQq')
         # board.parse_fen_code('8/8/1K5q/8/4B1Q1/8/8/k7 w KkQq')
         # board.parse_fen_code('8/8/2k5/8/8/4b3/3K4/8 w KkQq')
-        #board.parse_fen_code('8/6K1/1p1B1RB1/8/2Q5/2n1kP1N/3b4/4n3 w')
+        board.parse_fen_code('8/6K1/1p1B1RB1/8/2Q5/2n1kP1N/3b4/4n3 w')
+    # board.parse_fen_code('2bqkbn1/2pppp2/np2N3/r3P1p1/p2N2B1/5Q2/PPPPKPP1/RNB2r2 w KQkq')
     except IndexError:
         print("not enough pieces - Invalid FEN code")
     piece_to_move: Piece = None
     board.Update_Square_Controllers()
     board.King_in_Check()
-    print("White: ", board.pieces['K'][0].in_check(), " Black: ", board.pieces['K'][0].in_check())
+
     while running:
         clock.tick(50)
         board.draw()
@@ -691,40 +712,49 @@ def main(window):
                     break
 
             if pygame.mouse.get_pressed(3)[0]:
+
                 if not clicked:
+
                     clicked = True
                     clicked_square = board.grid[x][y]
-                    if piece_to_move is None and board.square_occupied(x, y) and clicked_square.same_color(board.turn):
+
+                    if piece_to_move is None and clicked_square.same_color(board.turn):
+                        # update piece to move
                         piece_to_move = clicked_square.Piece_on_Square
-                        if piece_to_move.Color == board.turn:
-                            # Generate that piece's legal moves and show them
-                            piece_to_move.on_click(board)
-                        else:
+
+                        # Generate that piece's legal moves and show them
+                        piece_to_move.on_click(board)
+
+                    elif piece_to_move is not None:
+
+                        if clicked_square == piece_to_move.Square:  # and not made illegal move:
+                            piece_to_move.on_release()
                             piece_to_move = None
 
-                    elif piece_to_move is not None and x == piece_to_move.Square.X and y == piece_to_move.Square.Y:
-                        piece_to_move.on_release()
-                        piece_to_move = None
+                        elif clicked_square.same_color(board.turn):
+                            piece_to_move.on_release()
+                            piece_to_move = clicked_square.Piece_on_Square
 
-                    elif piece_to_move is not None and clicked_square.same_color(board.turn):
-                        piece_to_move.on_release()
-                        piece_to_move = clicked_square.Piece_on_Square
-                        if piece_to_move.Color == board.turn:
-                            # Generate that piece's legal moves and show them
-                            piece_to_move.on_click(board)
-                        else:
-                            piece_to_move = None
+                            if piece_to_move.Color == board.turn:
 
-                    elif piece_to_move is not None and clicked_square.Piece_on_Square != piece_to_move:
-                        piece_to_move.on_release()
-                        if piece_to_move.move_piece(clicked_square, board):
-                            board.switch_turn()
-                            piece_to_move = None
-                            # update controlled squares
-                            # board.Update_Square_Controllers()
-                            board.King_in_Check()
-                            print("White: ", board.pieces['K'][0].in_check(), " Black: ",
-                                  board.pieces['K'][0].in_check())
+                                # Generate that piece's legal moves and show them
+                                piece_to_move.on_click(board)
+
+                            else:
+                                piece_to_move = None
+
+                        elif clicked_square.Piece_on_Square != piece_to_move:
+                            piece_to_move.on_release()
+
+                            if piece_to_move.move_piece(clicked_square, board):
+                                board.switch_turn()
+
+                                piece_to_move = None
+                                # update controlled squares
+                                board.King_in_Check()
+                            else:
+                                # whoops - clicked on illegal square - don't move and grab it again
+                                piece_to_move.on_click(board)
 
             if event.type == pygame.MOUSEBUTTONUP:
                 clicked = False
