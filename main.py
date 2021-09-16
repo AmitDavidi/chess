@@ -1,4 +1,5 @@
 import os
+
 import pygame
 
 cwd = os.getcwd()
@@ -26,23 +27,16 @@ LIGHT_BROWN = (187, 159, 123)
 
 
 # returns the opposite color of the piece
-def op_color(piece):
+def opposite_piece_color(piece):
     color = piece.Color
     if color == 'w':
-        op_color = 'b'
-    elif color == 'b':
-        op_color = 'w'
-    return op_color
+        opposite_color = 'b'
+    else:
+        opposite_color = 'w'
+
+    return opposite_color
 
 
-# returns Queen
-def Make_Queen(piece):
-    if piece.Color == 'b':
-        name = 'q'
-        return Quin(2, 9, piece.Color, name, pygame.image.load(os.path.join(images, 'bq.png')))
-    elif piece.Color == 'w':
-        name = 'Q'
-        return Quin(2, 9, piece.Color, name, pygame.image.load(os.path.join(images, 'wq.png')))
 
 
 # adds to legal moves that move
@@ -194,13 +188,19 @@ class Piece:
             # success
             if hasattr(self, "moved_flag"):
                 if self.Square.Y in [0, 7]:
-                    self = Make_Queen(self)
+
+                    square = self.Square
+                    self.kill()
+                    if self.Color == 'b':
+                        piece_to_set_after_pawn_advance = 'q'
+                    else:
+                        piece_to_set_after_pawn_advance = 'Q'
+                    square.set_piece(piece_to_set_after_pawn_advance, board.pieces, board.piece_nums)
+
+
                 self.moved_flag = True
-            board.made_ill = False
             return True
         else:
-            board.made_ill = True
-            return False
             return False
 
     def update_moves(self, board):
@@ -234,10 +234,10 @@ class Piece:
 
     def on_click(self, board):
         board.reset_control()
-        if self.Color == 'b':
-            king = board.pieces['k'][0]
-        else:
-            king = board.pieces['K'][0]
+        # if self.Color == 'b':
+        #    king = board.pieces['k'][0]
+        # else:
+        #    king = board.pieces['K'][0]
 
         self.Generate_Moves(board)
         # save the square of self
@@ -294,7 +294,7 @@ class King(Piece):
                             Playing_board.legal_moves[(self, cur_square)] = True
 
     def in_check(self):
-        if op_color(self) in self.Square.control:
+        if opposite_piece_color(self) in self.Square.control:
             return True
         return False
 
@@ -329,15 +329,19 @@ class Pawn(Piece):
         grid = Playing_board.grid
         if not just_update_squares:
             self.Moves = []
+            Playing_board.legal_moves = {}
 
         x_pos = self.Square.X
         y_pos = self.Square.Y
+
         color = self.Color
+
         advance_squares = []
         attack_squares = []
         flip = Playing_board.flip
+
         if flip:
-            flip_color = op_color(self)
+            flip_color = opposite_piece_color(self)
         else:
             flip_color = color
 
@@ -360,11 +364,15 @@ class Pawn(Piece):
                 except IndexError:
                     continue
 
-            if grid[x_pos][y_pos + 1].is_empty():
-                advance_squares.append(grid[x_pos][y_pos + 1])
+            try:
+                if grid[x_pos][y_pos + 1].is_empty():
+                    advance_squares.append(grid[x_pos][y_pos + 1])
 
-                if self.moved_flag is False:
-                    advance_squares.append(grid[x_pos][y_pos + 2])
+                    if self.moved_flag is False:
+                        advance_squares.append(grid[x_pos][y_pos + 2])
+            except IndexError:
+                pass
+
         if not just_update_squares:
             for square in advance_squares:
                 if square.is_empty():
@@ -484,7 +492,7 @@ class Board:
     def King_in_Check(self):
         kings = self.pieces['k'] + self.pieces['K']
         for king in kings:
-            if op_color(king) in king.Square.control:
+            if opposite_piece_color(king) in king.Square.control:
                 if king.Color == 'w':
                     self.white_in_check = True
                 else:
@@ -522,7 +530,6 @@ class Board:
         self.piece_nums = {}
         for row in self.grid:
             for square in row:
-                square: Square
                 piece = square.Piece_on_Square
                 if piece is not None:
                     piece: Piece
@@ -637,7 +644,7 @@ class Board:
 # X IS NUMBER OF COLUMN
 class Square:
     def __init__(self, *, X, Y):
-        self.Piece_on_Square: Piece = None
+        self.Piece_on_Square = None
         self.Color = None
         self.X = X
         self.Y = Y
@@ -715,8 +722,12 @@ def main(window):
         # board.parse_fen_code('8/8/2k5/8/8/4b3/3K4/8 w KkQq')
         # board.parse_fen_code('8/6K1/1p1B1RB1/8/2Q5/2n1kP1N/3b4/4n3 w')
         # board.parse_fen_code('2bqkbn1/2pppp2/np2N3/r3P1p1/p2N2B1/5Q2/PPPPKPP1/RNB2r2 b KQkq')
+        #board.parse_fen_code("2kr1b1r/ppqnp2p/2p1Qp1P/3P4/3P4/2N5/PPP2PP1/R1B1KBNR b KQ")
+        board.parse_fen_code("8/4PPPPP/8/8/1k2K3/8/ppppp3/8 w")
+
     except IndexError:
-        print("not enough pieces - Invalid FEN code")
+        print("Invalid FEN code")
+
     piece_to_move: Piece = None
     board.Update_Square_Controllers()
     board.King_in_Check()
@@ -739,49 +750,45 @@ def main(window):
                     break
 
             if pygame.mouse.get_pressed(3)[0]:
-
                 if not clicked:
-
                     clicked = True
                     clicked_square = board.grid[x][y]
 
                     if piece_to_move is None and clicked_square.same_color(board.turn):
                         # update piece to move
                         piece_to_move = clicked_square.Piece_on_Square
-
                         # Generate that piece's legal moves and show them
                         piece_to_move.on_click(board)
 
                     elif piece_to_move is not None:
-
-                        if clicked_square == piece_to_move.Square:  # and not made illegal move:
+                        # if clicked on same square - release the piece
+                        if clicked_square == piece_to_move.Square:
                             piece_to_move.on_release()
                             piece_to_move = None
 
+                        # if you clicked on a square that has a piece on it, and this piece is of the
+                        # SAME color - pick it, instead of the current piece
                         elif clicked_square.same_color(board.turn):
                             piece_to_move.on_release()
                             piece_to_move = clicked_square.Piece_on_Square
+                            # Generate that piece's legal moves and show them
+                            piece_to_move.on_click(board)
 
-                            if piece_to_move.Color == board.turn:
-
-                                # Generate that piece's legal moves and show them
-                                piece_to_move.on_click(board)
-
-                            else:
-                                piece_to_move = None
-
-                        elif clicked_square.Piece_on_Square != piece_to_move:
+                        # you clicked on a square that is not the same color, and
+                        # not the same square - move to that square!
+                        else:
+                            # clear the drawings of the piece's moves
                             piece_to_move.on_release()
-
+                            # try to move the piece
                             if piece_to_move.move_piece(clicked_square, board):
                                 board.switch_turn()
-
                                 piece_to_move = None
                                 # update controlled squares
                                 board.King_in_Check()
                             else:
-                                # whoops - clicked on illegal square - don't move and grab it again
-                                piece_to_move.on_click(board)
+                                # whoops - clicked on illegal square - don't move - release the piece
+                                piece_to_move.on_release()
+                                piece_to_move = None
 
             if event.type == pygame.MOUSEBUTTONUP:
                 clicked = False
