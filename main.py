@@ -169,8 +169,8 @@ class Piece:
         self.Square = target
         target.Piece_on_Square = self
 
-    def move_piece(self, target_square, board):
-        if (self, target_square) in board.legal_moves.keys():
+    def move_piece(self, target_square, board, castling=False):
+        if (self, target_square) in board.legal_moves.keys() or castling:
             target_square: Square
             # remove enemy piece from target square
             piece_on_target = target_square.Piece_on_Square
@@ -188,7 +188,6 @@ class Piece:
             # success
             if hasattr(self, "moved_flag"):
                 if self.Square.Y in [0, 7]:
-
                     square = self.Square
                     self.kill()
                     if self.Color == 'b':
@@ -199,6 +198,33 @@ class Piece:
 
 
                 self.moved_flag = True
+            if hasattr(self, "rook_type"):
+                if self.rook_type == 'king':
+                    if self.Color == 'b':
+                        board.black_castle_king = False
+                    elif self.Color == 'w':
+                        board.white_castle_king = False
+                elif self.rook_type == 'queen':
+                    if self.Color == 'b':
+                        board.black_castle_quin = False
+                    elif self.Color == 'w':
+                        board.white_castle_quin = False
+
+            if hasattr(self, "king_moved"):
+                if self.king_moved == False:
+                    if self.Square.X == 1 or self.Square.X == 5 or self.Square.X == 2 or self.Square.X == 6:
+                        board.move_rook(self)
+
+
+                if self.Color == 'b':
+                    board.black_castle_king = False
+                    board.black_castle_quin = False
+                if self.Color == 'w':
+                    board.white_castle_quin = False
+                    board.white_castle_king = False
+                self.king_moved = True
+
+
             return True
         else:
             return False
@@ -234,10 +260,6 @@ class Piece:
 
     def on_click(self, board):
         board.reset_control()
-        # if self.Color == 'b':
-        #    king = board.pieces['k'][0]
-        # else:
-        #    king = board.pieces['K'][0]
 
         self.Generate_Moves(board)
         # save the square of self
@@ -258,10 +280,28 @@ class Piece:
 
 
 class King(Piece):
-    pass
+    def __init__(self, id, value, color, name, image, square=None, number=1):
+        super().__init__(id, value, color, name, image, square, number)
+        self.king_moved = False
+
+
 
     def __repr__(self):
         return str(self.Square) + self.Name + self.Color
+    def can_castle(self, board, side: str = None):
+        # black
+        if self.Color == 'b':
+            # quin side
+            if side == 'quin':
+                return board.black_castle_quin
+            else: # king side
+                return board.black_castle_king
+        # white
+        else:
+            if side == 'king': # king side
+                return board.white_castle_king
+            else: # quin side
+                return board.white_castle_quin
 
     def Generate_Moves(self, Playing_board, just_update_squares=False):
         grid = Playing_board.grid
@@ -276,6 +316,75 @@ class King(Piece):
             op_color = 'b'
         elif color == 'b':
             op_color = 'w'
+
+        flipped = Playing_board.flip
+        # True - K || Q
+        # False - Q || K
+
+        if not just_update_squares:
+            # if not in check - check castle rights
+            if not self.king_moved:
+                if not self.in_check():
+                    # check king side castle
+
+                    if self.can_castle(Playing_board, 'king'):
+                        # check if the way is free
+                        if flipped:
+                            if color == 'b':
+                                if grid[2][7].is_empty() and grid[1][7].is_empty() and not (op_color in grid[1][7].control) and not (op_color in grid[2][7].control):
+                                    self.Moves.append(grid[1][7])
+                                    Playing_board.legal_moves[(self, grid[1][7])] = True
+
+                            else:
+                                if grid[2][0].is_empty() and grid[1][0].is_empty() and not (
+                                        op_color in grid[1][0].control) and not (op_color in grid[2][0].control):
+                                    self.Moves.append(grid[1][0])
+                                    Playing_board.legal_moves[(self, grid[1][0])] = True
+
+                        else:
+                            if color == 'b':
+
+                                if grid[5][0].is_empty() and grid[6][0].is_empty() and not (
+                                        op_color in grid[5][0].control) and not (op_color in grid[6][0].control):
+                                    self.Moves.append(grid[6][0])
+                                    Playing_board.legal_moves[(self, grid[6][0])] = True
+
+                            else:
+
+                                if grid[5][7].is_empty() and grid[6][7].is_empty() and not (
+                                        op_color in grid[5][7].control) and not (op_color in grid[6][7].control):
+
+                                    self.Moves.append(grid[6][7])
+                                    Playing_board.legal_moves[(self, grid[6][7])] = True
+
+                    # check queen side castle
+                    if self.can_castle(Playing_board, 'queen'):
+                        # check if the way is free
+                        if flipped:
+                            if color == 'b':
+                                if grid[4][7].is_empty() and grid[5][7].is_empty() and grid[6][7].is_empty() and not (
+                                        op_color in grid[4][7].control) and not (op_color in grid[5][7].control) and not (op_color in grid[6][7].control):
+                                    self.Moves.append(grid[5][7])
+                                    Playing_board.legal_moves[(self, grid[5][7])] = True
+
+                            else:
+                                if grid[4][0].is_empty() and grid[5][0].is_empty() and grid[6][0].is_empty() and not (
+                                        op_color in grid[4][0].control) and not (op_color in grid[5][0].control) and not (op_color in grid[6][0].control):
+                                    self.Moves.append(grid[5][0])
+                                    Playing_board.legal_moves[(self, grid[5][0])] = True
+
+                        else:
+                            if color == 'b':
+                                if grid[1][0].is_empty() and grid[2][0].is_empty() and grid[3][0].is_empty() and not (
+                                        op_color in grid[1][0].control) and not (op_color in grid[2][0].control) and not (op_color in grid[3][0].control):
+                                    self.Moves.append(grid[2][0])
+                                    Playing_board.legal_moves[(self, grid[2][0])] = True
+
+                            else:
+                                if grid[1][7].is_empty() and grid[2][7].is_empty() and grid[3][7].is_empty() and not (
+                                        op_color in grid[1][7].control) and not (op_color in grid[2][7].control) and not (op_color in grid[3][7].control):
+                                    self.Moves.append(grid[2][7])
+                                    Playing_board.legal_moves[(self, grid[2][7])] = True
 
         for i in move_range:
             for j in move_range:
@@ -292,6 +401,7 @@ class King(Piece):
                         if cur_square.is_empty() or cur_square.can_attack(color):
                             self.Moves.append(cur_square)
                             Playing_board.legal_moves[(self, cur_square)] = True
+
 
     def in_check(self):
         if opposite_piece_color(self) in self.Square.control:
@@ -390,6 +500,10 @@ class Pawn(Piece):
 
 
 class Rook(Piece):
+    def __init__(self, id, value, color, name, image, square=None, number=1):
+        super().__init__(id, value, color, name, image, square, number)
+        self.rook_moved = False
+        self.rook_type = None
 
     def Generate_Moves(self, Playing_board, just_update_squares=False):
         if not just_update_squares:
@@ -526,6 +640,8 @@ class Board:
                     square.Holder = DARK_BROWN
                 self.grid[i].append(square)
 
+
+
     def clear_board(self):
         self.piece_nums = {}
         for row in self.grid:
@@ -622,6 +738,103 @@ class Board:
     def grid_to_numpy_arr(self):
         pass
 
+
+    def update_rook_types(self):
+
+        for rook in self.pieces['r'][0:2] + self.pieces['R'][0:2]:
+            rook: Rook
+            # if not flipped - left side is the queen side - x = 0
+            if not self.flip:
+                if rook.Square.X == 0:
+                    rook.rook_type = 'queen'
+
+                elif rook.Square.X == COLS-1:
+                    rook.rook_type = 'king'
+            else:
+                if rook.Square.X == 0:
+                    rook.rook_type = 'king'
+                elif rook.Square.X == COLS-1:
+                    rook.rook_type = 'queen'
+
+    # given a castling command - move the correct rook.
+    def move_rook(self, king):
+        # X pos depends on flip
+        if self.flip:
+            if king.Square.X == 1:
+                if self.turn == 'b':
+                        # locate rook
+                        for black_rook in self.pieces['r']:
+                            black_rook: Rook
+                            if black_rook.rook_type == 'king':
+                                black_rook.move_piece(self.grid[2][7], self, castling=True)
+
+                if self.turn == 'w':
+                    # locate rook
+                    for white_rook in self.pieces['R']:
+                        white_rook: Rook
+                        if white_rook.rook_type == 'king':
+                            white_rook.move_piece(self.grid[2][0], self, castling=True)
+
+
+
+            elif king.Square.X == 5:
+                if self.turn == 'b':
+
+                    # locate rook
+                    for black_rook in self.pieces['r']:
+                        black_rook: Rook
+                        if black_rook.rook_type == 'queen':
+
+                            black_rook.move_piece(self.grid[4][7], self, castling=True)
+
+                elif self.turn == 'w':
+                    # locate rook
+                    for white_rook in self.pieces['R']:
+                        white_rook: Rook
+                        if white_rook.rook_type == 'queen':
+                            white_rook.move_piece(self.grid[4][0], self, castling=True)
+
+        else:
+
+            if king.Square.X == 2:
+                if self.turn == 'b':
+                        # locate rook
+                        for black_rook in self.pieces['r']:
+                            black_rook: Rook
+                            if black_rook.rook_type == 'queen':
+
+                                black_rook.move_piece(self.grid[3][0], self, castling=True)
+
+                if self.turn == 'w':
+
+                    # locate rook
+                    for white_rook in self.pieces['R']:
+                        white_rook: Rook
+                        if white_rook.rook_type == 'queen':
+
+                            white_rook.move_piece(self.grid[3][7], self, castling=True)
+
+
+
+            elif king.Square.X == 6:
+                if self.turn == 'b':
+
+                    # locate rook
+                    for black_rook in self.pieces['r']:
+                        black_rook: Rook
+                        if black_rook.rook_type == 'king':
+
+                            black_rook.move_piece(self.grid[5][0], self, castling=True)
+
+                elif self.turn == 'w':
+                    # locate rook
+                    for white_rook in self.pieces['R']:
+                        white_rook: Rook
+                        if white_rook.rook_type == 'king':
+                            white_rook.move_piece(self.grid[5][7], self, castling=True)
+
+
+
     def square_occupied(self, x, y):
         return self.grid[x][y].is_piece()
 
@@ -680,6 +893,7 @@ class Square:
     def is_empty(self):
         return self.Piece_on_Square is None
 
+
     def can_attack(self, color):
         if self.Piece_on_Square is None:
             return False
@@ -708,6 +922,9 @@ class Square:
         piece_num[piece_str] += 1
         self.Piece_on_Square.Square = self
 
+def print_castle(board):
+    #print("bk: ", board.black_castle_king, "bq: ", board. black_castle_quin, "wk: ", board. white_castle_king, "wq: ", board.white_castle_quin)
+    pass
 
 def main(window):
     clock = pygame.time.Clock()
@@ -718,22 +935,25 @@ def main(window):
     running = True
     try:
         # board.parse_fen_code('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KkQq')
+        board.parse_fen_code('r3k2r/pppppppp/8/8/8/8/PPPPPPPP/R3K2R w KkQq')
         # board.parse_fen_code('8/8/1K5q/8/4B1Q1/8/8/k7 w KkQq')
         # board.parse_fen_code('8/8/2k5/8/8/4b3/3K4/8 w KkQq')
         # board.parse_fen_code('8/6K1/1p1B1RB1/8/2Q5/2n1kP1N/3b4/4n3 w')
         # board.parse_fen_code('2bqkbn1/2pppp2/np2N3/r3P1p1/p2N2B1/5Q2/PPPPKPP1/RNB2r2 b KQkq')
         #board.parse_fen_code("2kr1b1r/ppqnp2p/2p1Qp1P/3P4/3P4/2N5/PPP2PP1/R1B1KBNR b KQ")
-        board.parse_fen_code("8/4PPPPP/8/8/1k2K3/8/ppppp3/8 w")
+        # board.parse_fen_code("8/4PPPPP/8/8/1k2K3/8/ppppp3/8 w")
 
     except IndexError:
         print("Invalid FEN code")
 
+    board.update_rook_types()
     piece_to_move: Piece = None
     board.Update_Square_Controllers()
     board.King_in_Check()
 
     while running:
-        clock.tick(50)
+        print_castle(board)
+        clock.tick(60)
         board.draw()
         pygame.display.update()
         x, y = pygame.mouse.get_pos()
