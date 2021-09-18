@@ -1,5 +1,5 @@
 import os
-
+from time import *
 import pygame
 
 cwd = os.getcwd()
@@ -44,6 +44,7 @@ def check_move(board, color, x, y, i, j, piece, just_update_moves):
     except IndexError:
         return False
     cur_square.control[color] = True
+    cur_square.control_c.append(color)
 
     if cur_square.same_color(color):
         return False
@@ -437,6 +438,7 @@ class King(Piece):
                 if 0 <= x_pos + i <= 7 and 0 <= y_pos + j <= 7:
                     cur_square: Square = grid[x_pos + i][y_pos + j]
                     cur_square.control[color] = True
+                    cur_square.control_c.append(color)
                     if not just_update_squares:
                         # if the square is in control of the opposite color - continue
                         if op_color in cur_square.control:
@@ -534,6 +536,8 @@ class Pawn(Piece):
 
             for square in attack_squares:
                 square.control[color] = True
+                square.control_c.append(color)
+
                 # generate en_passant_square
                 bool_en_p = False
 
@@ -560,6 +564,7 @@ class Pawn(Piece):
         else:
             for square in attack_squares:
                 square.control[color] = True
+                square.control_c.append(color)
 
 
 class Rook(Piece):
@@ -687,6 +692,7 @@ class Board:
         for row in self.grid:
             for square in row:
                 square.control = {}
+                square.control_c = []
 
     def set_board(self):
         for i in range(COLS):
@@ -848,15 +854,17 @@ class Board:
         # odd - black
         clock = pygame.time.Clock()
         for move in moves:
-            clock.tick(10)
+            self.draw()
+            clock.tick(20)
             if color_index % 2 == 0:  # if even
                 color = 'w'
             else:
                 color = 'b'
 
             self.make_PGN_move(move, color)
+            self.Update_Square_Controllers(update_colors=True)
             self.reset_control()
-            self.draw()
+
             pygame.display.update()
             color_index += 1
 
@@ -1074,7 +1082,24 @@ class Board:
         elif self.turn == 'b':
             self.turn = 'w'
 
-    def Update_Square_Controllers(self):
+    def update_colors(self):
+        for row in self.grid:
+            for square in row:
+                square.Color = (125, 125 ,125)
+                controllers_num = len(square.control_c)
+                if controllers_num == 0:
+                    square.Color = (80, 40, 0)
+                    continue
+                val = 60 / len(square.control_c)
+                d_val = -1 * val
+                for controller in square.control_c:
+                    if controller == 'w':
+                        square.Color = (min(250, square.Color[0] + val), min(250, square.Color[1] + val), min(250, square.Color[2] + val))
+                    else:
+                        square.Color = (max(0, square.Color[0] + d_val), max(0, square.Color[1] + d_val), max(0, square.Color[2] + d_val))
+                #print(square.Color)
+
+    def Update_Square_Controllers(self, update_colors=False):
         # before Generating moves again - clear the controls
         self.reset_control()
 
@@ -1082,6 +1107,8 @@ class Board:
             for piece in piece_stacks:
                 if piece.Square is not None:
                     piece.Generate_Moves(self, just_update_squares=True)
+        if update_colors:
+            self.update_colors()
 
 
 # X IS NUMBER OF COLUMN
@@ -1093,6 +1120,7 @@ class Square:
         self.Y = Y
         self.rect = pygame.Rect(X * SQUARE_SIZE, Y * SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE)
         self.control = {}
+        self.control_c = []
         self.Holder = None
         self.draw_dot = False
 
@@ -1101,6 +1129,7 @@ class Square:
 
     def reset_control(self):
         self.control = {}
+        self.control_c = []
 
     def is_piece(self):
         return self.Piece_on_Square is not None
