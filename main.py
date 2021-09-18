@@ -1,6 +1,9 @@
 import os
 from time import *
 import pygame
+import numpy as np
+import NN_Activations as NN
+import pickle
 
 cwd = os.getcwd()
 images = os.path.join(cwd, "Resources")
@@ -152,6 +155,16 @@ def square_parse(square_str: str, flip):
         sq_number = ord(square_str[0]) - ord('a')
         return COLS - 1 - sq_number, int(square_str[1]) - 1
 
+
+def load(path):
+    with open(path, 'rb') as f:
+        data = pickle.load(f)
+    return data
+
+def save(path, data):
+    # save the data
+    with open(path, 'wb') as f:
+        pickle.dump(data, f)
 
 class Piece:
     def __init__(self, id, value, color, name, image, square=None, number=1):
@@ -788,7 +801,7 @@ class Board:
 
     # PGN example - Ruy Lopez
     # 1. e4 e5 2. Nf3 Nc6 3. Bb5 a6
-    def parse_PGN(self, PGN_code: str):
+    def parse_PGN(self, PGN_code: str, data, draw=True):
         moves = []
         i = 0
         while i < len(PGN_code):
@@ -803,6 +816,8 @@ class Board:
                 array.remove(item)
 
         for item in array:
+
+
             # catches - bxf5 axf5 c5 - Pawn move
             if item[0].islower():
                 # pawn advance
@@ -810,13 +825,19 @@ class Board:
                     # pb5
                     item = 'P' + item
                     moves.append((item[0], None, item[1] + item[2]))
-                # pawn takes cxb5
+
+                # pawn takes cxb5 or d1=Q
                 elif len(item) == 4:
-                    # cb5
-                    item = item[0] + item[2] + item[3]
-                    # pcb5
-                    item = 'P' + item
-                    moves.append((item[0], item[1], item[2] + item[3]))
+                    # catches d1=Q
+                    if item[2] == '=':
+
+                        moves.append(('P', None, item[0] + item[1]))
+                    else:
+                        # cb5
+                        item = item[0] + item[2] + item[3]
+                        # pcb5
+                        item = 'P' + item
+                        moves.append((item[0], item[1], item[2] + item[3]))
 
             # piece move
             elif item[0].isupper():
@@ -852,20 +873,32 @@ class Board:
         color_index = 0
         # even - white
         # odd - black
-        clock = pygame.time.Clock()
+
+        c = pygame.time.Clock()
         for move in moves:
-            self.draw()
-            clock.tick(20)
+            flag = True
+            if draw:
+                #while flag:
+                #    for event in pygame.event.get():
+                #        if event.type == pygame.MOUSEBUTTONUP:
+                #            flag = False
+
+                #c.tick(60)
+                self.draw()
+                pygame.display.update()
+
+            data.append(self.grid_to_numpy_arr())
             if color_index % 2 == 0:  # if even
                 color = 'w'
             else:
                 color = 'b'
 
-            self.make_PGN_move(move, color)
-            self.Update_Square_Controllers(update_colors=True)
+            if self.make_PGN_move(move, color) != True:
+                print(PGN_code)
+            self.Update_Square_Controllers()
             self.reset_control()
 
-            pygame.display.update()
+
             color_index += 1
 
     # PGN move maker - with specific column
@@ -908,18 +941,26 @@ class Board:
 
                     if piece_code == 'CK':
                         piece.move_piece(self.grid[6][0], self, castling=True)
+                        self.switch_turn()
+                        return True
 
                     elif piece_code == 'CQ':
                         piece.move_piece(self.grid[2][0], self, castling=True)
+                        self.switch_turn()
+                        return True
 
                 elif color == 'w':
                     piece = self.pieces['K'][0]
 
                     if piece_code == 'CK':
                         piece.move_piece(self.grid[6][7], self, castling=True)
+                        self.switch_turn()
+                        return True
 
                     elif piece_code == 'CQ':
                         piece.move_piece(self.grid[2][7], self, castling=True)
+                        self.switch_turn()
+                        return True
             # if flipped
             else:
                 if color == 'b':
@@ -927,20 +968,28 @@ class Board:
 
                     if piece_code == 'CK':
                         piece.move_piece(self.grid[1][7], self, castling=True)
+                        self.switch_turn()
+                        return True
 
                     elif piece_code == 'CQ':
                         piece.move_piece(self.grid[5][7], self, castling=True)
+                        self.switch_turn()
+                        return True
 
                 elif color == 'w':
                     piece = self.pieces['K'][0]
                     if piece_code == 'CK':
                         piece.move_piece(self.grid[1][0], self, castling=True)
+                        self.switch_turn()
+                        return True
 
                     elif piece_code == 'CQ':
                         piece.move_piece(self.grid[5][0], self, castling=True)
+                        self.switch_turn()
+                        return True
 
-            self.switch_turn()
-            return
+            #self.switch_turn()
+            #return True
 
         Square_X, Square_Y = square_parse(target_code, self.flip)
         target_square = self.grid[Square_X][Square_Y]
@@ -949,9 +998,13 @@ class Board:
             # locate piece
             if color == 'b':
                 self.action(piece_code.lower(), target_square)
+                self.switch_turn()
+                return True
 
             else:
                 self.action(piece_code.upper(), target_square)
+                self.switch_turn()
+                return True
 
         # has a specific column
         else:
@@ -959,12 +1012,15 @@ class Board:
             # locate piece
             if color == 'b':
                 self.action_with_col(piece_code.lower(), target_square, col)
+                self.switch_turn()
+                return True
 
             else:
                 self.action_with_col(piece_code.upper(), target_square, col)
+                self.switch_turn()
+                return True
 
-        self.switch_turn()
-        return "Done"
+        return False
 
     # fixes the pawns' first move rights - double advance - after parsing a FEN code
     def fix_pawns(self):
@@ -986,7 +1042,18 @@ class Board:
                     white_pawn.moved_flag = True
 
     def grid_to_numpy_arr(self):
-        pass
+        matrix = np.zeros((COLS, COLS))
+        x = 0
+        for row in self.grid:
+            y = 0
+            for square in row:
+                piece = square.Piece_on_Square
+                if piece is not None:
+                    matrix[y, x] = piece.Id
+                y += 1
+            x += 1
+        return matrix
+
 
     def update_rook_types(self):
 
@@ -1110,6 +1177,16 @@ class Board:
         if update_colors:
             self.update_colors()
 
+    def start_pos(self):
+        self.flip = False
+        self.parse_fen_code('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KkQq')
+        self.update_rook_types()
+        self.Update_Square_Controllers()
+        self.King_in_Check()
+
+    def numpy_to_grid(self, matrix):
+        pass
+
 
 # X IS NUMBER OF COLUMN
 class Square:
@@ -1183,31 +1260,36 @@ class Square:
 
 def main(window):
     clock = pygame.time.Clock()
-
     board = Board(window)
     board.set_board()
+    start_grid = np.array([[3., 4., 5., 2., 1., 5., 4., 3.],
+                             [6., 6., 6., 6., 6., 6., 6., 6.],
+                             [0., 0., 0., 0., 0., 0., 0., 0.],
+                             [0., 0., 0., 0., 0., 0., 0., 0.],
+                             [0., 0., 0., 0., 0., 0., 0., 0.],
+                             [0., 0., 0., 0., 0., 0., 0., 0.],
+                             [6., 6., 6., 6., 6., 6., 6., 6.],
+                             [3., 4., 5., 2., 1., 5., 4., 3.]])
+    board.start_pos()
     board.flip = False
     clicked = False
     running = True
+
     try:
         board.parse_fen_code('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KkQq')
 
     except IndexError:
         print("Invalid FEN code")
-
     board.update_rook_types()
-    piece_to_move = None
     board.Update_Square_Controllers()
     board.King_in_Check()
+    piece_to_move = None
 
-    board.parse_PGN(
-        "1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Be7 6. Re1 b5 7. Bb3 d6 8. c3 O-O 9."
-        " h3 Nb8 10. d4 Nbd7 11. c4 c6 12. cxb5 axb5 13. Nc3 Bb7 14. Bg5 b4 15. Nb1 h6 16. Bh4"
-        " c5 17. dxe5 Nxe4 18. Bxe7 Qxe7 19. exd6 Qf6 20. Nbd2 Nxd6 21. Nc4 Nxc4 22. Bxc4 Nb6 "
-        "23. Ne5 Rae8 24. Bxf7+ Rxf7 25. Nxf7 Rxe1+ 26. Qxe1 Kxf7 27. Qe3 Qg5 28. Qxg5 hxg5 29."
-        " b3 Ke6 30. a3 Kd6 31. axb4 cxb4 32. Ra5 Nd5 33. f3 Bc8 34. Kf2 Bf5 35. Ra7 g6 36. Ra6+"
-        " Kc5 37. Ke1 Nf4 38. g3 Nxh3 39. Kd2 Kb5 40. Rd6 Kc5 41. Ra6 Nf2 42. g4 Bd3 43. Re6")
 
+    model = NN.Model.load('latest_model.model')
+
+
+"""
     while running:
         clock.tick(60)
         board.draw()
@@ -1225,6 +1307,8 @@ def main(window):
                 if event.key == pygame.K_q:
                     running = False
                     break
+
+
 
             if pygame.mouse.get_pressed(3)[0]:
                 if not clicked:
@@ -1270,8 +1354,56 @@ def main(window):
             if event.type == pygame.MOUSEBUTTONUP:
                 clicked = False
 
-
+"""
 try:
     main(WIN)
 except FileNotFoundError:
     print("your working directory is not set")
+
+
+"""
+X = load('X')
+    print(X.shape)
+    y = load('y')
+    # X = X.reshape(X.shape[0], -1).astype(np.float32)
+    # y = y.reshape(y.shape[0], -1).astype(np.float32)
+    # model = NN.Model()
+    # model.add(NN.Layer_Dense(64, 128))
+    # model.add(NN.Activation_ReLU())
+    # model.add(NN.Layer_Dense(128, 128))
+    # model.add(NN.Activation_ReLU())
+    # model.add(NN.Layer_Dense(128, 64))
+    # model.add(NN.Activation_Softmax())
+    # model.set(optimizer=NN.Optimizer_Adam(decay=1e-3),
+    #           loss=NN.Loss_CategoricalCrossentropy(),
+    #           accuracy=NN.Accuracy_Categorical())
+    # model.finalize()
+    # model.train(X[:60000], y[:60000], epochs=20, batch_size=3, print_every=100, validation_data=(X[60001: 80000], y[60001:80000]))
+    # model.save('latest_model.model')
+
+    # create data --
+    # i = 0
+    # with open("PGNS.txt", 'r+') as f:
+    #     for line in f.readlines():
+    #         i += 1
+    #
+    #         if line == '':
+    #             continue
+    #         pgn_code = line
+    #         board.start_pos()
+    #         data.append(start_grid)
+    #         board.parse_PGN(pgn_code, data, draw=False)
+    # save("PGN_DATA", data)
+    #
+    # print(np.array_equal(board.grid_to_numpy_arr(), start_grid))
+    # x = []
+    # y = []
+    # for index in range(len(data)):
+    #     if not np.array_equal(data[index], start_grid):
+    #         y.append(data[index])
+    #         x.append(data[index - 1])
+    #
+    # save("X", x)
+    # save("y", y)
+
+"""
