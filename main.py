@@ -146,11 +146,10 @@ def square_parse(square_str: str, flip):
         return None
     if not flip:
         sq_number = ord(square_str[0]) - ord('a')
-        return (sq_number, COLS - int(square_str[1]))
+        return sq_number, COLS - int(square_str[1])
     else:
         sq_number = ord(square_str[0]) - ord('a')
-        return (COLS - 1 - sq_number, int(square_str[1]) - 1)
-
+        return COLS - 1 - sq_number, int(square_str[1]) - 1
 
 
 class Piece:
@@ -254,7 +253,7 @@ class Piece:
                         board.white_castle_quin = False
 
             if hasattr(self, "king_moved"):
-                if self.king_moved == False:
+                if not self.king_moved:
                     if self.Square.X == 1 or self.Square.X == 5 or self.Square.X == 2 or self.Square.X == 6:
                         board.move_rook(self)
 
@@ -274,7 +273,7 @@ class Piece:
 
         if self.Color == 'b':
             king = board.pieces['k'][0]
-        elif self.Color == 'w':
+        else:
             king = board.pieces['K'][0]
 
         to_pop = []
@@ -354,7 +353,7 @@ class King(Piece):
         color = self.Color
         if color == 'w':
             op_color = 'b'
-        elif color == 'b':
+        else:
             op_color = 'w'
 
         flipped = Playing_board.flip
@@ -710,7 +709,7 @@ class Board:
             for square in row:
                 piece = square.Piece_on_Square
                 if piece is not None:
-                    piece: Piece
+
                     piece.Square = None
                     square.Piece_on_Square = None
 
@@ -781,16 +780,14 @@ class Board:
 
         self.fix_pawns()
 
-
     # PGN example - Ruy Lopez
     # 1. e4 e5 2. Nf3 Nc6 3. Bb5 a6
     def parse_PGN(self, PGN_code: str):
-        #print(PGN_code)
         moves = []
         i = 0
         while i < len(PGN_code):
             if PGN_code[i] == '+':
-                PGN_code = PGN_code[:i] + PGN_code[i+1:]
+                PGN_code = PGN_code[:i] + PGN_code[i + 1:]
             i += 1
 
         array = PGN_code.split()
@@ -804,12 +801,15 @@ class Board:
             if item[0].islower():
                 # pawn advance
                 if len(item) == 2:
-                    item = 'P' + item  # pb5
+                    # pb5
+                    item = 'P' + item
                     moves.append((item[0], None, item[1] + item[2]))
                 # pawn takes cxb5
                 elif len(item) == 4:
-                    item = item[0] + item[2] + item[3] #cb5
-                    item = 'P' + item #pcb5
+                    # cb5
+                    item = item[0] + item[2] + item[3]
+                    # pcb5
+                    item = 'P' + item
                     moves.append((item[0], item[1], item[2] + item[3]))
 
             # piece move
@@ -824,12 +824,12 @@ class Board:
                 # Piece moves
                 # Ba4
                 if len(item) == 3:
-                    moves.append((item[0], None, item[1]+item[2]))
+                    moves.append((item[0], None, item[1] + item[2]))
 
                 # Piece takes
                 # Bxa4
                 elif len(item) == 4 and item[1] == 'x':
-                    item = item[0] + item[2] + item[3] #now item = Ba4
+                    item = item[0] + item[2] + item[3]  # now item = Ba4
                     moves.append((item[0], None, item[1] + item[2]))
 
                 # Specific Piece from column <a> moves
@@ -840,55 +840,40 @@ class Board:
                 # Specific Piece from column <a> takes
                 # Baxc4
                 elif len(item) == 5:
-                    item = item[0] + item[1] + item[-2] + item[-1] #now item = Bac4
+                    item = item[0] + item[1] + item[-2] + item[-1]  # now item = Bac4
                     moves.append((item[0], item[1], item[2] + item[3]))
 
         color_index = 0
         # even - white
         # odd - black
         clock = pygame.time.Clock()
-        clicked = False
-        i = 0
-        #print(PGN_code)
         for move in moves:
-            clock.tick(100)
+            clock.tick(10)
             if color_index % 2 == 0:  # if even
                 color = 'w'
             else:
                 color = 'b'
+
             self.make_PGN_move(move, color)
+            self.reset_control()
             self.draw()
             pygame.display.update()
             color_index += 1
 
+    # PGN move maker - with specific column
+    def action_with_col(self, code, target_square, col):
+        for piece in self.pieces[code]:
+            if not piece.on_board():
+                continue
+            piece.Generate_Moves(self)
+            if piece.Square is not None:
+                if piece.Square.X == col:
+                    if target_square in piece.Moves:
+                        piece.move_piece(target_square, self)
+                    elif piece.Name.lower() == 'k':
+                        piece.move_piece(target_square, self)
 
-
-
-
-        #while i < len(moves):
-        #    move = moves[i]
-#
-        #    clock.tick(100)
-        #    for event in pygame.event.get():
-        #        if event.type == pygame.QUIT:
-        #            pygame.quit()
-        #        if pygame.mouse.get_pressed(3)[0]:
-        #            if not clicked:
-        #                clicked = True
-        #                self.make_PGN_move(move, color)
-        #                self.draw()
-        #                pygame.display.update()
-        #                color_index += 1
-        #                i += 1
-        #                #print("CLICK")
-        #        if event.type == pygame.MOUSEBUTTONUP:
-        #            clicked = False
-        #    if color_index % 2 == 0: #if even
-        #        color = 'w'
-        #    else:
-        #        color = 'b'
-            #print(move)
-
+    # PGN move maker - without specific column
     def action(self, code, target_square):
 
         for piece in self.pieces[code]:
@@ -900,51 +885,51 @@ class Board:
                 piece.move_piece(target_square, self)
 
             elif piece.Name.lower() == 'k':
-                piece.move_piece(target_square, self, castling=True)
-
-
+                piece.move_piece(target_square, self)
 
     def make_PGN_move(self, move, color):
         piece_code, from_col, target_code = move
         # get target square
 
-        #if its a castling command:
-        if target_code == None:
+        # if its a castling command:
+        if target_code is None:
+            # if not flipped
             if not self.flip:
                 if color == 'b':
-                    king = self.pieces['k'][0]
+                    piece = self.pieces['k'][0]
+
                     if piece_code == 'CK':
-                        king.move_piece(self.grid[6][0], self, castling=True)
+                        piece.move_piece(self.grid[6][0], self, castling=True)
 
                     elif piece_code == 'CQ':
-                        king.move_piece(self.grid[2][0], self, castling=True)
-
+                        piece.move_piece(self.grid[2][0], self, castling=True)
 
                 elif color == 'w':
-                    king = self.pieces['K'][0]
+                    piece = self.pieces['K'][0]
+
                     if piece_code == 'CK':
-                        king.move_piece(self.grid[6][7], self, castling=True)
+                        piece.move_piece(self.grid[6][7], self, castling=True)
 
                     elif piece_code == 'CQ':
-                        king.move_piece(self.grid[2][7], self, castling=True)
+                        piece.move_piece(self.grid[2][7], self, castling=True)
+            # if flipped
             else:
                 if color == 'b':
-                    king = self.pieces['k'][0]
+                    piece = self.pieces['k'][0]
+
                     if piece_code == 'CK':
-                        king.move_piece(self.grid[1][7], self, castling=True)
+                        piece.move_piece(self.grid[1][7], self, castling=True)
 
                     elif piece_code == 'CQ':
-                        king.move_piece(self.grid[5][7], self, castling=True)
-
+                        piece.move_piece(self.grid[5][7], self, castling=True)
 
                 elif color == 'w':
-                    king = self.pieces['K'][0]
+                    piece = self.pieces['K'][0]
                     if piece_code == 'CK':
-                        king.move_piece(self.grid[1][0], self, castling=True)
+                        piece.move_piece(self.grid[1][0], self, castling=True)
 
                     elif piece_code == 'CQ':
-                        king.move_piece(self.grid[5][0], self, castling=True)
-            #print("Castled")
+                        piece.move_piece(self.grid[5][0], self, castling=True)
 
             self.switch_turn()
             return
@@ -960,43 +945,18 @@ class Board:
             else:
                 self.action(piece_code.upper(), target_square)
 
-
         # has a specific column
         else:
             col, row = square_parse(from_col + '1', self.flip)
             # locate piece
             if color == 'b':
-                for piece in self.pieces[piece_code.lower()]:
-                    if not piece.on_board():
-                        continue
-                    piece.Generate_Moves(self)
-                    if piece.Square is not None:
-                        if piece.Square.X == col:
-                            if target_square in piece.Moves:
-                                piece.move_piece(target_square, self)
-                            elif piece.Name.lower() == 'k':
-                                piece.move_piece(target_square, self, castling=True)
-
+                self.action_with_col(piece_code.lower(), target_square, col)
 
             else:
-                for piece in self.pieces[piece_code.upper()]:
-
-                    if not piece.on_board():
-                        continue
-                    piece.Generate_Moves(self)
-                    if piece.Square is not None:
-                        if piece.Square.X == col:
-                            if target_square in piece.Moves:
-                                piece_to_move = piece
-                                piece_to_move.move_piece(target_square, self)
-                            elif piece.Name.lower() == 'k':
-                                piece.move_piece(target_square, self, castling=True)
+                self.action_with_col(piece_code.upper(), target_square, col)
 
         self.switch_turn()
         return "Done"
-
-
-
 
     # fixes the pawns' first move rights - double advance - after parsing a FEN code
     def fix_pawns(self):
@@ -1056,8 +1016,6 @@ class Board:
                         if white_rook.rook_type == 'king':
                             white_rook.move_piece(self.grid[2][0], self, castling=True)
 
-
-
             elif king.Square.X == 5:
                 if self.turn == 'b':
 
@@ -1090,8 +1048,6 @@ class Board:
                         white_rook: Rook
                         if white_rook.rook_type == 'queen':
                             white_rook.move_piece(self.grid[3][7], self, castling=True)
-
-
 
             elif king.Square.X == 6:
                 if self.turn == 'b':
@@ -1196,8 +1152,6 @@ class Square:
         self.Piece_on_Square.Square = self
 
 
-
-
 def main(window):
     clock = pygame.time.Clock()
 
@@ -1213,12 +1167,18 @@ def main(window):
         print("Invalid FEN code")
 
     board.update_rook_types()
-    piece_to_move: Piece = None
+    piece_to_move = None
     board.Update_Square_Controllers()
     board.King_in_Check()
 
-    board.parse_PGN("1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Be7 6. Re1 b5 7. Bb3 d6 8. c3 O-O 9. h3 Nb8 10. d4 Nbd7 11. c4 c6 12. cxb5 axb5 13. Nc3 Bb7 14. Bg5 b4 15. Nb1 h6 16. Bh4 c5 17. dxe5 Nxe4 18. Bxe7 Qxe7 19. exd6 Qf6 20. Nbd2 Nxd6 21. Nc4 Nxc4 22. Bxc4 Nb6 23. Ne5 Rae8 24. Bxf7+ Rxf7 25. Nxf7 Rxe1+ 26. Qxe1 Kxf7 27. Qe3 Qg5 28. Qxg5 hxg5 29. b3 Ke6 30. a3 Kd6 31. axb4 cxb4 32. Ra5 Nd5 33. f3 Bc8 34. Kf2 Bf5 35. Ra7 g6 36. Ra6+ Kc5 37. Ke1 Nf4 38. g3 Nxh3 39. Kd2 Kb5 40. Rd6 Kc5 41. Ra6 Nf2 42. g4 Bd3 43. Re6")
-    """
+    board.parse_PGN(
+        "1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Be7 6. Re1 b5 7. Bb3 d6 8. c3 O-O 9."
+        " h3 Nb8 10. d4 Nbd7 11. c4 c6 12. cxb5 axb5 13. Nc3 Bb7 14. Bg5 b4 15. Nb1 h6 16. Bh4"
+        " c5 17. dxe5 Nxe4 18. Bxe7 Qxe7 19. exd6 Qf6 20. Nbd2 Nxd6 21. Nc4 Nxc4 22. Bxc4 Nb6 "
+        "23. Ne5 Rae8 24. Bxf7+ Rxf7 25. Nxf7 Rxe1+ 26. Qxe1 Kxf7 27. Qe3 Qg5 28. Qxg5 hxg5 29."
+        " b3 Ke6 30. a3 Kd6 31. axb4 cxb4 32. Ra5 Nd5 33. f3 Bc8 34. Kf2 Bf5 35. Ra7 g6 36. Ra6+"
+        " Kc5 37. Ke1 Nf4 38. g3 Nxh3 39. Kd2 Kb5 40. Rd6 Kc5 41. Ra6 Nf2 42. g4 Bd3 43. Re6")
+
     while running:
         clock.tick(60)
         board.draw()
@@ -1280,7 +1240,7 @@ def main(window):
 
             if event.type == pygame.MOUSEBUTTONUP:
                 clicked = False
-    """
+
 
 try:
     main(WIN)
