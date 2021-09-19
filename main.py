@@ -1,24 +1,28 @@
 import os
-from time import *
-import pygame
-import numpy as np
-import NN_Activations as NN
 import pickle
-import copy
 import sys
+from time import *
 
-sys.setrecursionlimit(2500)
+import numpy as np
+import pygame
+
+
+sys.setrecursionlimit(2200)
+KNIGHTS_TOUR_COLS = 5
 
 CLOCK = pygame.time.Clock()
 cwd = os.getcwd()
 images = os.path.join(cwd, "Resources")
+
 HEIGHT = 700
 WIDTH = 700
-COLS = 8
-SQUARE_SIZE = HEIGHT // 8
+COLS = 18
+SQUARE_SIZE = HEIGHT // COLS
 pygame.font.init()
 WIN = pygame.display.set_mode((HEIGHT, WIDTH))
 MOVES = pygame.Surface((HEIGHT, WIDTH))
+ARROW_SURFACE = pygame.Surface((HEIGHT, WIDTH), pygame.SRCALPHA)
+
 constants = {
     'HEIGHT': HEIGHT,
     'WIDTH': WIDTH,
@@ -47,6 +51,8 @@ BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 DARK_BROWN = (113, 81, 57)
 LIGHT_BROWN = (187, 159, 123)
+YELLOW = (240, 230, 140)
+BLUE = (0, 150, 255)
 
 
 # returns the opposite color of the piece
@@ -181,10 +187,12 @@ def load(path):
         data = pickle.load(f)
     return data
 
+
 def save(path, data):
     # save the data
     with open(path, 'wb') as f:
         pickle.dump(data, f)
+
 
 class Piece:
     def __init__(self, id, value, color, name, image, square=None, number=1):
@@ -412,7 +420,6 @@ class King(Piece):
                             else:
                                 if grid[2][0].is_empty() and grid[1][0].is_empty() and not (
                                         'b' in grid[1][0].control) and not ('b' in grid[2][0].control):
-
                                     self.Moves.append(grid[1][0])
                                     Playing_board.legal_moves[(self, grid[1][0])] = True
 
@@ -445,7 +452,7 @@ class King(Piece):
                             else:
                                 if grid[4][0].is_empty() and grid[5][0].is_empty() and grid[6][0].is_empty() and not (
                                         op_color in grid[4][0].control) and not (
-                                        op_color in grid[5][0].control) :
+                                        op_color in grid[5][0].control):
                                     self.Moves.append(grid[5][0])
                                     Playing_board.legal_moves[(self, grid[5][0])] = True
 
@@ -620,6 +627,10 @@ class Rook(Piece):
 
 
 class Knight(Piece):
+    def __init__(self, id, value, color, name, image, square=None, number=1):
+        super().__init__(id, value, color, name, image, square, number)
+        self.min_move = 10
+
     # if ((abs(i - self.Pos[0]) + abs(j - self.Pos[1])) == 3 and (i > 0) and (j > 0) and j < board_size + 1 and i <
     # board_size + 1):
     def Generate_Moves(self, Playing_board, just_update_squares=False):
@@ -635,20 +646,52 @@ class Knight(Piece):
                     if abs(i) + abs(j) == 3:
                         check_move(Playing_board, color, x_pos, y_pos, i, j, self, just_update_squares)
 
-    def Generate_Tour_Moves(self, Playing_board, been_there):
+    def warnsdorff_generate(self, Playing_board, square_to_check, been_there):
+        # Square to check is a square we want to move to
+        x_pos = square_to_check.X
+        y_pos = square_to_check.Y
+        counter = 0
+        for i, j in [(-2, 1), (-1, -2), (-1, 2), (-2, 1), (2, -1), (1, -2), (1, 2), (2, 1)]:
+            x_target = x_pos + i
+            y_target = y_pos + j
+            if 0 <= x_target < KNIGHTS_TOUR_COLS and 0 <= y_target < KNIGHTS_TOUR_COLS:
+                if Playing_board.grid[x_target][y_target] not in been_there:
+                    counter += 1
+
+        # return counter
+        if counter <= self.min_move:
+            self.min_move = counter
+            self.Moves.remove(square_to_check)
+            self.Moves.insert(0, square_to_check)
+
+
+
+
+    def Generate_Tour_Moves(self, Playing_board, been_there, warnsdorff):
         self.Moves = []
+        self.min_move = 10
         x_pos = self.Square.X
         y_pos = self.Square.Y
-        for i in range(-2, 3):
-            for j in range(-2, 3):
-                if 0 <= x_pos + i < 5 and 0 <= y_pos + j < 5:
-                    if abs(i) + abs(j) == 3 and Playing_board.grid[x_pos + i][y_pos + j] not in been_there:
-                        self.Moves.append(Playing_board.grid[x_pos + i][y_pos + j])
+
+        # for coordinate of possible Knight moves
+        for i, j in [(-2, -1), (-1, -2), (-1, 2), (-2, 1), (2, -1), (1, -2), (1, 2), (2, 1)]:
+            x_target = x_pos + i
+            y_target = y_pos + j
+            if 0 <= x_target < KNIGHTS_TOUR_COLS and 0 <= y_target < KNIGHTS_TOUR_COLS:
+                if Playing_board.grid[x_target][y_target] not in been_there:
+                    self.Moves.append(Playing_board.grid[x_target][y_target])
+                    if warnsdorff:
+                        # self.Moves = sorted(self.Moves, key=lambda x: self.warnsdorff_generate(Playing_board, x, been_there))
+                        self.warnsdorff_generate(Playing_board, Playing_board.grid[x_target][y_target], been_there)
+
+
+
 
     def Move_Tour(self, target):
         self.Square.Piece_on_Square = None
         self.Square = target
         target.Piece_on_Square = self
+
 
 class Bishop(Piece):
 
@@ -755,82 +798,107 @@ class Board:
                     square.Holder = DARK_BROWN
                 self.grid[i].append(square)
 
+    def destroy_all(self):
+        for row in self.grid:
+            for square in row:
+                piece: Piece = square.Piece_on_Square
+                if piece is not None:
+                    piece.kill()
+
+        self.piece_nums = {}
+        self.turn = None
+        self.en_pass = False  # bool expression - if en passant is available
+        self.black_castle_quin = False
+        self.black_castle_king = False
+        self.white_castle_quin = False
+        self.white_castle_king = False
+        self.legal_moves = {}
+        self.flip = False
+        self.made_ill = False
+        self.piece_nums = {}
+        self.black_in_check = False
+        self.white_in_check = False
+        self.en_passant_square = None
+
     def clear_board(self):
         self.piece_nums = {}
         for row in self.grid:
             for square in row:
                 piece = square.Piece_on_Square
                 if piece is not None:
-
                     piece.Square = None
                     square.Piece_on_Square = None
 
     # not including times
     def parse_fen_code(self, code: str, flip=None):
-        if flip is None:
-            last = None
-            for char in code:
-                if last == ' ':
-                    if char == 'w':
-                        flip = False
-                    elif char == 'b':
-                        flip = True
-                last = char
-        self.flip = flip
-        self.clear_board()
-        i = 0
-        code_len = len(code)
-        index = -1
-        char = code[0]
-        # first code pass
-        # Piece Positions
-        while char != ' ' and index + 1 < code_len:
+        try:
+            if flip is None:
+                last = None
+                for char in code:
+                    if last == ' ':
+                        if char == 'w':
+                            flip = False
+                        elif char == 'b':
+                            flip = True
+                    last = char
+            self.flip = flip
+            self.clear_board()
+            i = 0
+            code_len = len(code)
+            index = -1
+            char = code[0]
+            # first code pass
+            # Piece Positions
+            while char != ' ' and index + 1 < code_len:
+                index += 1
+                char = code[index]
+                if char == '/':
+                    continue
+                elif char.isnumeric():
+                    i += int(char)
+                    continue
+
+                elif char.isalpha() and char in constants['Chess_Pieces']:
+                    j = i // COLS
+                    if not flip:
+                        self.grid[i - (j * COLS)][j].set_piece(char, self.pieces, self.piece_nums)
+                    else:
+                        self.grid[abs(i - (j * COLS) - (COLS-1))][abs(j - (COLS-1))].set_piece(char, self.pieces, self.piece_nums)
+                    i += 1
+
+            if index == code_len - 1:
+                return
+
+            # advance to next pass - skip space
             index += 1
+            # Who's Turn is it
             char = code[index]
-            if char == '/':
-                continue
-            elif char.isnumeric():
-                i += int(char)
-                continue
-
-            elif char.isalpha() and char in constants['Chess_Pieces']:
-                j = i // COLS
-                if not flip:
-                    self.grid[i - (j * 8)][j].set_piece(char, self.pieces, self.piece_nums)
-                else:
-                    self.grid[abs(i - (j * 8) - 7)][abs(j - 7)].set_piece(char, self.pieces, self.piece_nums)
-                i += 1
-
-        if index == code_len - 1:
-            return
-
-        # advance to next pass - skip space
-        index += 1
-        # Who's Turn is it
-        char = code[index]
-        self.turn = char
-        # advance to next code pass
-        index += 1
-        # first skip space - Castling Rights
-        while char != ' ' and index + 1 < code_len:
+            self.turn = char
+            # advance to next code pass
             index += 1
-            char = code[index]
-            if char == 'k':
-                self.black_castle_king = True
-            elif char == 'K':
-                self.white_castle_king = True
-            elif char == 'Q':
-                self.white_castle_quin = True
-            elif char == 'q':
-                self.black_castle_quin = True
+            # first skip space - Castling Rights
+            while char != ' ' and index + 1 < code_len:
+                index += 1
+                char = code[index]
+                if char == 'k':
+                    self.black_castle_king = True
+                elif char == 'K':
+                    self.white_castle_king = True
+                elif char == 'Q':
+                    self.white_castle_quin = True
+                elif char == 'q':
+                    self.black_castle_quin = True
 
-        # advance to an passant skip space
-        index += 1
-        self.en_passant_square = square_parse(code[index:], flip)
-        if self.en_passant_square is not None:
-            self.en_pass = True
+            # advance to an passant skip space
+            index += 1
+            self.en_passant_square = square_parse(code[index:], flip)
+            if self.en_passant_square is not None:
+                self.en_pass = True
 
-        self.fix_pawns()
+            self.fix_pawns()
+
+        except IndexError:
+            print("Invalid FEN code")
 
     # PGN example - Ruy Lopez
     # 1. e4 e5 2. Nf3 Nc6 3. Bb5 a6
@@ -849,7 +917,6 @@ class Board:
                 array.remove(item)
 
         for item in array:
-
 
             # catches - bxf5 axf5 c5 - Pawn move
             if item[0].islower():
@@ -911,12 +978,12 @@ class Board:
         for move in moves:
             flag = True
             if draw:
-                #while flag:
+                # while flag:
                 #    for event in pygame.event.get():
                 #        if event.type == pygame.MOUSEBUTTONUP:
                 #            flag = False
 
-                #c.tick(60)
+                # c.tick(60)
                 self.draw()
                 pygame.display.update()
 
@@ -930,7 +997,6 @@ class Board:
                 print(PGN_code)
             self.Update_Square_Controllers()
             self.reset_control()
-
 
             color_index += 1
 
@@ -1021,8 +1087,8 @@ class Board:
                         self.switch_turn()
                         return True
 
-            #self.switch_turn()
-            #return True
+            # self.switch_turn()
+            # return True
 
         Square_X, Square_Y = square_parse(target_code, self.flip)
         target_square = self.grid[Square_X][Square_Y]
@@ -1090,7 +1156,6 @@ class Board:
             x += 1
 
         return matrix
-
 
     def update_rook_types(self):
 
@@ -1191,7 +1256,7 @@ class Board:
     def update_colors(self):
         for row in self.grid:
             for square in row:
-                square.Color = (125, 125 ,125)
+                square.Color = (125, 125, 125)
                 controllers_num = len(square.control_c)
                 if controllers_num == 0:
                     square.Color = (80, 40, 0)
@@ -1200,9 +1265,11 @@ class Board:
                 d_val = -1 * val
                 for controller in square.control_c:
                     if controller == 'w':
-                        square.Color = (min(250, square.Color[0] + val), min(250, square.Color[1] + val), min(250, square.Color[2] + val))
+                        square.Color = (min(250, square.Color[0] + val), min(250, square.Color[1] + val),
+                                        min(250, square.Color[2] + val))
                     else:
-                        square.Color = (max(0, square.Color[0] + d_val), max(0, square.Color[1] + d_val), max(0, square.Color[2] + d_val))
+                        square.Color = (max(0, square.Color[0] + d_val), max(0, square.Color[1] + d_val),
+                                        max(0, square.Color[2] + d_val))
 
     def Update_Square_Controllers(self, update_colors=False):
         # before Generating moves again - clear the controls
@@ -1228,45 +1295,51 @@ class Board:
     def numpy_to_grid(self, original, result):
         pass
 
-    def Tour(self, knight: Knight, been_there: dict, num=0):
-
+    def Tour(self, draw, knight: Knight, been_there, warnsdorff, start_time):
         been_there.add(knight.Square)
-
-        knight.Generate_Tour_Moves(self, been_there)
-
-        if len(been_there) == 26:
-            #print(been_there)
+        if len(been_there) == KNIGHTS_TOUR_COLS*KNIGHTS_TOUR_COLS + 1:
             return 1
 
+        knight.Generate_Tour_Moves(self, been_there, warnsdorff)
         if not knight.Moves:
             return 0
 
-
+        num = 0
         for move in knight.Moves:
+            last_sq = knight.Square
             knight.Move_Tour(move)
-            self.draw()
-            pygame.display.update()
-            num += self.Tour(knight, been_there.copy())
+
+            if draw:
+                CLOCK.tick(15)
+                self.draw()
+                pygame.draw.line(ARROW_SURFACE, BLACK, last_sq.rect.center, knight.Square.rect.center, width=3)
+                WIN.blit(ARROW_SURFACE, (0, 0))
+                pygame.display.update()
+
+            num += self.Tour(draw, knight, been_there.copy(), warnsdorff, start_time)
 
         return num
 
+    def Knights_Tour(self, draw=False, warnsdorff=False):
 
-    def Knights_Tour(self):
+        for i in range(KNIGHTS_TOUR_COLS):
+            for j in range(KNIGHTS_TOUR_COLS):
 
-        for i in range(5):
-            for j in range(5):
-
-                square: Square = self.grid[i][j]
+                square = self.grid[i][j]
                 square.set_piece("N", self.pieces, self.piece_nums)
+
                 knight = square.Piece_on_Square
+                if draw:
+                    self.draw()
+                    pygame.display.update()
 
-                been_there = {True}
+                start = time()
+                print(self.Tour(True, knight, {True}, warnsdorff, time()))
+                print(time() - start)
 
-                print(self.Tour(knight, been_there))
-
-                self.draw()
-                pygame.display.update()
                 self.clear_board()
+
+
 
 # X IS NUMBER OF COLUMN
 class Square:
@@ -1382,7 +1455,7 @@ def model_LEL(board):
     # model.train(X, y, epochs=10, batch_size=10, print_every=100, validation_data=(X_test, y_test))
     # model.save('latest_model.model')
 
-       # create data --
+    # create data --
     # data = []
     # i = 0
     # with open("PGNS.txt", 'r+') as f:
@@ -1414,31 +1487,19 @@ def model_LEL(board):
 
 
 def main(window):
-    clock = pygame.time.Clock()
     board = Board(window)
     board.set_board()
-
-    #board.start_pos()
-    board.flip = False
+    global KNIGHTS_TOUR_COLS
+    KNIGHTS_TOUR_COLS = 18
+    board.Knights_Tour(draw=False, warnsdorff=True)
+    exit()
+    board.start_pos()
     clicked = False
     running = True
-    board.Knights_Tour()
-    exit()
-    #
-    # try:
-    #     #board.parse_fen_code('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KkQq')
-    #
-    # except IndexError:
-    #     print("Invalid FEN code")
-    board.update_rook_types()
-    board.Update_Square_Controllers()
-    board.King_in_Check()
     piece_to_move = None
 
-
-
     while running:
-        clock.tick(60)
+        CLOCK.tick(60)
         board.draw()
         pygame.display.update()
         x, y = pygame.mouse.get_pos()
@@ -1453,8 +1514,11 @@ def main(window):
                 if event.key == pygame.K_q:
                     running = False
                     break
-
-
+                if event.key == pygame.K_d:
+                    board.destroy_all()
+                    board.Knights_Tour()
+                    board.destroy_all()
+                    board.start_pos()
 
             if pygame.mouse.get_pressed(3)[0]:
                 if not clicked:
@@ -1501,8 +1565,9 @@ def main(window):
                 clicked = False
 
 
-try:
-    main(WIN)
-
-except FileNotFoundError:
-    print("your working directory is not set")
+# try:
+#     main(WIN)
+#
+# except FileNotFoundError:
+#     print("your working directory is not set")
+main(WIN)
