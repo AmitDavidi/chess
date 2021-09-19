@@ -22,6 +22,21 @@ constants = {
     'font': pygame.font.SysFont('Arial', 25),
     'Chess_Pieces': ['R', 'r', 'N', 'n', 'B', 'b', 'Q', 'q', 'K', 'k', 'P', 'p']
 }
+chess_dict = {
+    'p': [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    'P': [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
+    'n': [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    'N': [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
+    'b': [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    'B': [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
+    'r': [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
+    'R': [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0],
+    'q': [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
+    'Q': [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0],
+    'k': [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
+    'K': [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    '.': [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+}
 
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
@@ -314,7 +329,7 @@ class Piece:
 
     def on_click(self, board):
         board.reset_control()
-
+        board.Update_Square_Controllers()
         self.Generate_Moves(board)
         # save the square of self
         first_square = self.Square
@@ -345,13 +360,13 @@ class King(Piece):
         # black
         if self.Color == 'b':
             # quin side
-            if side == 'quin':
+            if side == 'q':
                 return board.black_castle_quin
             else:  # king side
                 return board.black_castle_king
         # white
         else:
-            if side == 'king':  # king side
+            if side.lower() == 'k':  # king side
                 return board.white_castle_king
             else:  # quin side
                 return board.white_castle_quin
@@ -377,21 +392,25 @@ class King(Piece):
         if not just_update_squares:
             # if not in check - check castle rights
             if not self.king_moved:
+                print("king not moved")
                 if not self.in_check():
+                    print("king not in check")
                     # check king side castle
 
-                    if self.can_castle(Playing_board, 'king'):
+                    if self.can_castle(Playing_board, 'k'):
+                        print("Checking KING")
                         # check if the way is free
                         if flipped:
                             if color == 'b':
                                 if grid[2][7].is_empty() and grid[1][7].is_empty() and not (
-                                        op_color in grid[1][7].control) and not (op_color in grid[2][7].control):
+                                        'w' in grid[1][7].control) and not ('w' in grid[2][7].control):
                                     self.Moves.append(grid[1][7])
                                     Playing_board.legal_moves[(self, grid[1][7])] = True
 
                             else:
                                 if grid[2][0].is_empty() and grid[1][0].is_empty() and not (
-                                        op_color in grid[1][0].control) and not (op_color in grid[2][0].control):
+                                        'b' in grid[1][0].control) and not ('b' in grid[2][0].control):
+
                                     self.Moves.append(grid[1][0])
                                     Playing_board.legal_moves[(self, grid[1][0])] = True
 
@@ -411,34 +430,34 @@ class King(Piece):
                                     Playing_board.legal_moves[(self, grid[6][7])] = True
 
                     # check queen side castle
-                    if self.can_castle(Playing_board, 'queen'):
+                    if self.can_castle(Playing_board, 'q'):
+                        print("checking Queen")
                         # check if the way is free
                         if flipped:
                             if color == 'b':
                                 if grid[4][7].is_empty() and grid[5][7].is_empty() and grid[6][7].is_empty() and not (
-                                        op_color in grid[4][7].control) and not (
-                                        op_color in grid[5][7].control) and not (op_color in grid[6][7].control):
+                                        'w' in grid[4][7].control) and not (
+                                        'w' in grid[5][7].control):
                                     self.Moves.append(grid[5][7])
+                                    print(grid[4][7].control)
                                     Playing_board.legal_moves[(self, grid[5][7])] = True
 
                             else:
                                 if grid[4][0].is_empty() and grid[5][0].is_empty() and grid[6][0].is_empty() and not (
                                         op_color in grid[4][0].control) and not (
-                                        op_color in grid[5][0].control) and not (op_color in grid[6][0].control):
+                                        op_color in grid[5][0].control) :
                                     self.Moves.append(grid[5][0])
                                     Playing_board.legal_moves[(self, grid[5][0])] = True
 
                         else:
                             if color == 'b':
                                 if grid[1][0].is_empty() and grid[2][0].is_empty() and grid[3][0].is_empty() and not (
-                                        op_color in grid[1][0].control) and not (
                                         op_color in grid[2][0].control) and not (op_color in grid[3][0].control):
                                     self.Moves.append(grid[2][0])
                                     Playing_board.legal_moves[(self, grid[2][0])] = True
 
                             else:
                                 if grid[1][7].is_empty() and grid[2][7].is_empty() and grid[3][7].is_empty() and not (
-                                        op_color in grid[1][7].control) and not (
                                         op_color in grid[2][7].control) and not (op_color in grid[3][7].control):
                                     self.Moves.append(grid[2][7])
                                     Playing_board.legal_moves[(self, grid[2][7])] = True
@@ -1042,16 +1061,20 @@ class Board:
                     white_pawn.moved_flag = True
 
     def grid_to_numpy_arr(self):
-        matrix = np.zeros((COLS, COLS))
+        matrix = np.zeros((COLS, COLS, len(chess_dict['p'])))
         x = 0
         for row in self.grid:
             y = 0
             for square in row:
                 piece = square.Piece_on_Square
                 if piece is not None:
-                    matrix[y, x] = piece.Id
+                    name = piece.Name
+                else:
+                    name = '.'
+                matrix[y, x] = chess_dict[name]
                 y += 1
             x += 1
+
         return matrix
 
 
@@ -1060,6 +1083,8 @@ class Board:
         for rook in self.pieces['r'][0:2] + self.pieces['R'][0:2]:
             rook: Rook
             # if not flipped - left side is the queen side - x = 0
+            if rook.Square is None:
+                continue
             if not self.flip:
                 if rook.Square.X == 0:
                     rook.rook_type = 'queen'
@@ -1184,8 +1209,11 @@ class Board:
         self.Update_Square_Controllers()
         self.King_in_Check()
 
-    def numpy_to_grid(self, matrix):
+    def move_piece_engine(self, from_square, target_square):
         pass
+    def numpy_to_grid(self, original, result):
+        pass
+
 
 
 # X IS NUMBER OF COLUMN
@@ -1258,25 +1286,92 @@ class Square:
         self.Piece_on_Square.Square = self
 
 
+def model_LEL(board):
+    start_grid = np.array([[chess_dict['r'], chess_dict['b'], chess_dict['b'], chess_dict['q'], chess_dict['k'],
+                            chess_dict['b'], chess_dict['b'], chess_dict['r']],
+                           [chess_dict['p'], chess_dict['p'], chess_dict['p'], chess_dict['p'], chess_dict['p'],
+                            chess_dict['p'], chess_dict['p'], chess_dict['p']],
+                           [chess_dict['.'], chess_dict['.'], chess_dict['.'], chess_dict['.'], chess_dict['.'],
+                            chess_dict['.'], chess_dict['.'], chess_dict['.']],
+                           [chess_dict['.'], chess_dict['.'], chess_dict['.'], chess_dict['.'], chess_dict['.'],
+                            chess_dict['.'], chess_dict['.'], chess_dict['.']],
+                           [chess_dict['.'], chess_dict['.'], chess_dict['.'], chess_dict['.'], chess_dict['.'],
+                            chess_dict['.'], chess_dict['.'], chess_dict['.']],
+                           [chess_dict['.'], chess_dict['.'], chess_dict['.'], chess_dict['.'], chess_dict['.'],
+                            chess_dict['.'], chess_dict['.'], chess_dict['.']],
+                           [chess_dict['P'], chess_dict['P'], chess_dict['P'], chess_dict['P'], chess_dict['P'],
+                            chess_dict['P'], chess_dict['P'], chess_dict['P']],
+                           [chess_dict['R'], chess_dict['N'], chess_dict['B'], chess_dict['Q'], chess_dict['K'],
+                            chess_dict['B'], chess_dict['N'], chess_dict['R']]])
+    X = load('X')
+    y = load('y')
+    X = X.reshape(X.shape[0], -1).astype(np.float32)
+    y = y.reshape(y.shape[0], -1).astype(np.float32)
+    len_x = len(X)
+    len_y = len(y)
+    X_test = X[int(len_x * 0.8) + 1:]
+    y_test = y[int(len_y * 0.8) + 1:]
+
+    X = X[:int(len_x * 0.8)]
+    y = y[:int(len_y * 0.8)]
+
+    # model = NN.Model()
+    # model.add(NN.Layer_Dense(768, 128))
+    # model.add(NN.Activation_ReLU())
+    # model.add(NN.Layer_Dense(128, 128))
+    # model.add(NN.Activation_ReLU())
+    # model.add(NN.Layer_Dense(128, 768))
+    # model.add(NN.Activation_Softmax())
+    # model.set(optimizer=NN.Optimizer_Adam(decay=1e-3),
+    #           loss=NN.Loss_CategoricalCrossentropy(),
+    #           accuracy=NN.Accuracy_Categorical())
+    # model.finalize()
+    # model.train(X, y, epochs=10, batch_size=10, print_every=100, validation_data=(X_test, y_test))
+    # model.save('latest_model.model')
+
+       # create data --
+    # data = []
+    # i = 0
+    # with open("PGNS.txt", 'r+') as f:
+    #
+    #     for line in f.readlines():
+    #         i += 1
+    #
+    #         if line == '':
+    #             continue
+    #         pgn_code = line
+    #         board.start_pos()
+    #         data.append(start_grid)
+    #         board.parse_PGN(pgn_code, data, draw=False)
+    #
+    # save("PGN_DATA", data)
+
+    # data = load("PGN_DATA")
+    #
+    # x = []
+    # y = []
+    # for index in range(len(data)//3):
+    #     if not np.array_equal(data[index], start_grid):
+    #         y.append(data[index])
+    #         x.append(data[index - 1])
+    #
+    # save("X", np.array(x))
+    #
+    # save("y", np.array(y))
+
+
 def main(window):
     clock = pygame.time.Clock()
     board = Board(window)
     board.set_board()
-    start_grid = np.array([[3., 4., 5., 2., 1., 5., 4., 3.],
-                             [6., 6., 6., 6., 6., 6., 6., 6.],
-                             [0., 0., 0., 0., 0., 0., 0., 0.],
-                             [0., 0., 0., 0., 0., 0., 0., 0.],
-                             [0., 0., 0., 0., 0., 0., 0., 0.],
-                             [0., 0., 0., 0., 0., 0., 0., 0.],
-                             [6., 6., 6., 6., 6., 6., 6., 6.],
-                             [3., 4., 5., 2., 1., 5., 4., 3.]])
+
     board.start_pos()
     board.flip = False
     clicked = False
     running = True
 
     try:
-        board.parse_fen_code('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KkQq')
+        board.parse_fen_code('r3k2r/8/8/8/8/8/8/R3K2R b KkQq')
 
     except IndexError:
         print("Invalid FEN code")
@@ -1286,15 +1381,12 @@ def main(window):
     piece_to_move = None
 
 
-    model = NN.Model.load('latest_model.model')
 
-
-"""
     while running:
         clock.tick(60)
         board.draw()
         pygame.display.update()
-
+        #print(board.black_castle_quin)
         x, y = pygame.mouse.get_pos()
         x = min(x // SQUARE_SIZE, COLS - 1)
         y = min(y // SQUARE_SIZE, COLS - 1)
@@ -1354,56 +1446,9 @@ def main(window):
             if event.type == pygame.MOUSEBUTTONUP:
                 clicked = False
 
-"""
+
 try:
     main(WIN)
+
 except FileNotFoundError:
     print("your working directory is not set")
-
-
-"""
-X = load('X')
-    print(X.shape)
-    y = load('y')
-    # X = X.reshape(X.shape[0], -1).astype(np.float32)
-    # y = y.reshape(y.shape[0], -1).astype(np.float32)
-    # model = NN.Model()
-    # model.add(NN.Layer_Dense(64, 128))
-    # model.add(NN.Activation_ReLU())
-    # model.add(NN.Layer_Dense(128, 128))
-    # model.add(NN.Activation_ReLU())
-    # model.add(NN.Layer_Dense(128, 64))
-    # model.add(NN.Activation_Softmax())
-    # model.set(optimizer=NN.Optimizer_Adam(decay=1e-3),
-    #           loss=NN.Loss_CategoricalCrossentropy(),
-    #           accuracy=NN.Accuracy_Categorical())
-    # model.finalize()
-    # model.train(X[:60000], y[:60000], epochs=20, batch_size=3, print_every=100, validation_data=(X[60001: 80000], y[60001:80000]))
-    # model.save('latest_model.model')
-
-    # create data --
-    # i = 0
-    # with open("PGNS.txt", 'r+') as f:
-    #     for line in f.readlines():
-    #         i += 1
-    #
-    #         if line == '':
-    #             continue
-    #         pgn_code = line
-    #         board.start_pos()
-    #         data.append(start_grid)
-    #         board.parse_PGN(pgn_code, data, draw=False)
-    # save("PGN_DATA", data)
-    #
-    # print(np.array_equal(board.grid_to_numpy_arr(), start_grid))
-    # x = []
-    # y = []
-    # for index in range(len(data)):
-    #     if not np.array_equal(data[index], start_grid):
-    #         y.append(data[index])
-    #         x.append(data[index - 1])
-    #
-    # save("X", x)
-    # save("y", y)
-
-"""
