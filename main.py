@@ -16,13 +16,14 @@ images = os.path.join(cwd, "Resources")
 
 HEIGHT = 700
 WIDTH = 700
-KNIGHTS_TOUR_COLS = 8
 COLS = 8
+KNIGHTS_TOUR_COLS = COLS
 
 SQUARE_SIZE = HEIGHT // COLS
+
 pygame.font.init()
 WIN = pygame.display.set_mode((HEIGHT, WIDTH))
-MOVES = pygame.Surface((HEIGHT, WIDTH))
+# MOVES = pygame.Surface((HEIGHT, WIDTH))
 ARROW_SURFACE = pygame.Surface((HEIGHT, WIDTH), pygame.SRCALPHA)
 
 constants = {
@@ -33,21 +34,21 @@ constants = {
     'font': pygame.font.SysFont('Arial', 25),
     'Chess_Pieces': ['R', 'r', 'N', 'n', 'B', 'b', 'Q', 'q', 'K', 'k', 'P', 'p']
 }
-chess_dict = {
-    'p': [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    'P': [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
-    'n': [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    'N': [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
-    'b': [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    'B': [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
-    'r': [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
-    'R': [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0],
-    'q': [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-    'Q': [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0],
-    'k': [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
-    'K': [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-    '.': [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-}
+# chess_dict = {
+#     'p': [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+#     'P': [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
+#     'n': [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+#     'N': [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
+#     'b': [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+#     'B': [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
+#     'r': [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
+#     'R': [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0],
+#     'q': [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
+#     'Q': [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0],
+#     'k': [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
+#     'K': [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+#     '.': [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+# }
 
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
@@ -1300,6 +1301,7 @@ class Board:
     def Tour(self, draw, knight: Knight, been_there, warnsdorff, start_time):
         been_there.add(knight.Square)
         if len(been_there) == KNIGHTS_TOUR_COLS*KNIGHTS_TOUR_COLS + 1:
+            sleep(5)
             return 1
 
         knight.Generate_Tour_Moves(self, been_there, warnsdorff)
@@ -1308,21 +1310,27 @@ class Board:
 
         num = 0
         for move in knight.Moves:
-             # last_sq = knight.Square
+            last_sq = knight.Square
             knight.Move_Tour(move)
 
             if draw:
-                CLOCK.tick(30)
+                #CLOCK.tick(60)
+                factor = 0.15
                 for row in self.grid:
                     for sq in row:
                         if sq in been_there:
-                            #r,g,b = sq.Color
-                            sq.Color = (20, 20, 20)
+                            if sq.Holder == DARK_BROWN:
+                                r, g, b = DARK_BROWN
+                            else:
+                                r, g, b = LIGHT_BROWN
+                            sq.Color = (r * factor, g * factor, b * factor)
+                            #sq.Color = (10, 10, 10)
+
                         else:
                             sq.Color = sq.Holder
                 self.draw()
-                # pygame.draw.line(ARROW_SURFACE, BLUE, last_sq.rect.center, knight.Square.rect.center, width=1)
-                # WIN.blit(ARROW_SURFACE, (0, 0))
+                pygame.draw.line(ARROW_SURFACE, BLUE, last_sq.rect.center, knight.Square.rect.center, width=1)
+                WIN.blit(ARROW_SURFACE, (0, 0))
                 pygame.display.update()
 
             num += self.Tour(draw, knight, been_there.copy(), warnsdorff, start_time)
@@ -1331,6 +1339,7 @@ class Board:
 
     def Knights_Tour(self, draw=False, warnsdorff=False):
         # sleep(1)
+        start = time()
         for i in range(KNIGHTS_TOUR_COLS):
             for j in range(KNIGHTS_TOUR_COLS):
 
@@ -1342,12 +1351,12 @@ class Board:
                     self.draw()
                     pygame.display.update()
 
-                start = time()
-                print(self.Tour(True, knight, {True}, warnsdorff, time()))
-                print(time() - start)
+                start2 = time()
+                print(self.Tour(draw, knight, {True}, warnsdorff, time()))
+                print(time() - start2)
 
                 self.clear_board()
-
+        print(time() - start)
 
 
 # X IS NUMBER OF COLUMN
@@ -1406,7 +1415,7 @@ class Square:
             image_width = self.Piece_on_Square.Image.get_width()
             image_height = self.Piece_on_Square.Image.get_height()
             window.blit(self.Piece_on_Square.Image,
-                        (self.rect.centerx - (image_width // 2), self.rect.centery - (image_height // 2)))
+                       (self.rect.centerx - (image_width // 2), self.rect.centery - (image_height // 2)))
 
     # Gets a string that represents the Piece
     # the First setting of the piece
@@ -1498,15 +1507,15 @@ def model_LEL(board):
 def main(window):
     board = Board(window)
     board.set_board()
-    global KNIGHTS_TOUR_COLS
-    KNIGHTS_TOUR_COLS = min(KNIGHTS_TOUR_COLS, COLS)
-    board.Knights_Tour(draw=False, warnsdorff=True)
+
+    board.Knights_Tour(draw=True, warnsdorff=True)
     exit()
+
+
     board.start_pos()
     clicked = False
     running = True
     piece_to_move = None
-
     while running:
         CLOCK.tick(60)
         board.draw()
