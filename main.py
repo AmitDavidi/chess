@@ -8,7 +8,7 @@ import pygame
 
 
 sys.setrecursionlimit(2200)
-KNIGHTS_TOUR_COLS = 5
+KNIGHTS_TOUR_COLS = 8
 
 CLOCK = pygame.time.Clock()
 cwd = os.getcwd()
@@ -16,7 +16,7 @@ images = os.path.join(cwd, "Resources")
 
 HEIGHT = 700
 WIDTH = 700
-COLS = 18
+COLS = 8
 SQUARE_SIZE = HEIGHT // COLS
 pygame.font.init()
 WIN = pygame.display.set_mode((HEIGHT, WIDTH))
@@ -1490,7 +1490,7 @@ def main(window):
     board = Board(window)
     board.set_board()
     global KNIGHTS_TOUR_COLS
-    KNIGHTS_TOUR_COLS = 18
+    KNIGHTS_TOUR_COLS = min(KNIGHTS_TOUR_COLS, COLS)
     board.Knights_Tour(draw=False, warnsdorff=True)
     exit()
     board.start_pos()
