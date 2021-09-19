@@ -7,8 +7,8 @@ import numpy as np
 import pygame
 
 
-sys.setrecursionlimit(2200)
-KNIGHTS_TOUR_COLS = 8
+sys.setrecursionlimit(25200)
+
 
 CLOCK = pygame.time.Clock()
 cwd = os.getcwd()
@@ -16,7 +16,9 @@ images = os.path.join(cwd, "Resources")
 
 HEIGHT = 700
 WIDTH = 700
+KNIGHTS_TOUR_COLS = 8
 COLS = 8
+
 SQUARE_SIZE = HEIGHT // COLS
 pygame.font.init()
 WIN = pygame.display.set_mode((HEIGHT, WIDTH))
@@ -1306,14 +1308,21 @@ class Board:
 
         num = 0
         for move in knight.Moves:
-            last_sq = knight.Square
+             # last_sq = knight.Square
             knight.Move_Tour(move)
 
             if draw:
-                CLOCK.tick(15)
+                CLOCK.tick(30)
+                for row in self.grid:
+                    for sq in row:
+                        if sq in been_there:
+                            #r,g,b = sq.Color
+                            sq.Color = (20, 20, 20)
+                        else:
+                            sq.Color = sq.Holder
                 self.draw()
-                pygame.draw.line(ARROW_SURFACE, BLACK, last_sq.rect.center, knight.Square.rect.center, width=3)
-                WIN.blit(ARROW_SURFACE, (0, 0))
+                # pygame.draw.line(ARROW_SURFACE, BLUE, last_sq.rect.center, knight.Square.rect.center, width=1)
+                # WIN.blit(ARROW_SURFACE, (0, 0))
                 pygame.display.update()
 
             num += self.Tour(draw, knight, been_there.copy(), warnsdorff, start_time)
@@ -1321,7 +1330,7 @@ class Board:
         return num
 
     def Knights_Tour(self, draw=False, warnsdorff=False):
-
+        # sleep(1)
         for i in range(KNIGHTS_TOUR_COLS):
             for j in range(KNIGHTS_TOUR_COLS):
 
