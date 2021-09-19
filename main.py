@@ -4,7 +4,12 @@ import pygame
 import numpy as np
 import NN_Activations as NN
 import pickle
+import copy
+import sys
 
+sys.setrecursionlimit(2500)
+
+CLOCK = pygame.time.Clock()
 cwd = os.getcwd()
 images = os.path.join(cwd, "Resources")
 HEIGHT = 700
@@ -392,13 +397,10 @@ class King(Piece):
         if not just_update_squares:
             # if not in check - check castle rights
             if not self.king_moved:
-                print("king not moved")
                 if not self.in_check():
-                    print("king not in check")
                     # check king side castle
 
                     if self.can_castle(Playing_board, 'k'):
-                        print("Checking KING")
                         # check if the way is free
                         if flipped:
                             if color == 'b':
@@ -431,7 +433,6 @@ class King(Piece):
 
                     # check queen side castle
                     if self.can_castle(Playing_board, 'q'):
-                        print("checking Queen")
                         # check if the way is free
                         if flipped:
                             if color == 'b':
@@ -439,7 +440,6 @@ class King(Piece):
                                         'w' in grid[4][7].control) and not (
                                         'w' in grid[5][7].control):
                                     self.Moves.append(grid[5][7])
-                                    print(grid[4][7].control)
                                     Playing_board.legal_moves[(self, grid[5][7])] = True
 
                             else:
@@ -635,6 +635,20 @@ class Knight(Piece):
                     if abs(i) + abs(j) == 3:
                         check_move(Playing_board, color, x_pos, y_pos, i, j, self, just_update_squares)
 
+    def Generate_Tour_Moves(self, Playing_board, been_there):
+        self.Moves = []
+        x_pos = self.Square.X
+        y_pos = self.Square.Y
+        for i in range(-2, 3):
+            for j in range(-2, 3):
+                if 0 <= x_pos + i < 5 and 0 <= y_pos + j < 5:
+                    if abs(i) + abs(j) == 3 and Playing_board.grid[x_pos + i][y_pos + j] not in been_there:
+                        self.Moves.append(Playing_board.grid[x_pos + i][y_pos + j])
+
+    def Move_Tour(self, target):
+        self.Square.Piece_on_Square = None
+        self.Square = target
+        target.Piece_on_Square = self
 
 class Bishop(Piece):
 
@@ -1189,7 +1203,6 @@ class Board:
                         square.Color = (min(250, square.Color[0] + val), min(250, square.Color[1] + val), min(250, square.Color[2] + val))
                     else:
                         square.Color = (max(0, square.Color[0] + d_val), max(0, square.Color[1] + d_val), max(0, square.Color[2] + d_val))
-                #print(square.Color)
 
     def Update_Square_Controllers(self, update_colors=False):
         # before Generating moves again - clear the controls
@@ -1211,10 +1224,49 @@ class Board:
 
     def move_piece_engine(self, from_square, target_square):
         pass
+
     def numpy_to_grid(self, original, result):
         pass
 
+    def Tour(self, knight: Knight, been_there: dict, num=0):
 
+        been_there.add(knight.Square)
+
+        knight.Generate_Tour_Moves(self, been_there)
+
+        if len(been_there) == 26:
+            #print(been_there)
+            return 1
+
+        if not knight.Moves:
+            return 0
+
+
+        for move in knight.Moves:
+            knight.Move_Tour(move)
+            self.draw()
+            pygame.display.update()
+            num += self.Tour(knight, been_there.copy())
+
+        return num
+
+
+    def Knights_Tour(self):
+
+        for i in range(5):
+            for j in range(5):
+
+                square: Square = self.grid[i][j]
+                square.set_piece("N", self.pieces, self.piece_nums)
+                knight = square.Piece_on_Square
+
+                been_there = {True}
+
+                print(self.Tour(knight, been_there))
+
+                self.draw()
+                pygame.display.update()
+                self.clear_board()
 
 # X IS NUMBER OF COLUMN
 class Square:
@@ -1277,6 +1329,7 @@ class Square:
     # Gets a string that represents the Piece
     # the First setting of the piece
     def set_piece(self, piece_str, pieces, piece_num):
+
         try:
             piece_num[piece_str]
         except KeyError:
@@ -1365,16 +1418,18 @@ def main(window):
     board = Board(window)
     board.set_board()
 
-    board.start_pos()
+    #board.start_pos()
     board.flip = False
     clicked = False
     running = True
-
-    try:
-        board.parse_fen_code('r3k2r/8/8/8/8/8/8/R3K2R b KkQq')
-
-    except IndexError:
-        print("Invalid FEN code")
+    board.Knights_Tour()
+    exit()
+    #
+    # try:
+    #     #board.parse_fen_code('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KkQq')
+    #
+    # except IndexError:
+    #     print("Invalid FEN code")
     board.update_rook_types()
     board.Update_Square_Controllers()
     board.King_in_Check()
@@ -1386,7 +1441,6 @@ def main(window):
         clock.tick(60)
         board.draw()
         pygame.display.update()
-        #print(board.black_castle_quin)
         x, y = pygame.mouse.get_pos()
         x = min(x // SQUARE_SIZE, COLS - 1)
         y = min(y // SQUARE_SIZE, COLS - 1)
