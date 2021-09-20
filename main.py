@@ -751,6 +751,7 @@ class Board:
         self.black_in_check = False
         self.white_in_check = False
         self.en_passant_square = None
+        self.Knights_Tour_button = pymenu.Button(WIN, on_click_func=lambda: -1, x=(WIDTH//2)-30, y=0, width=60, height=30, text="STOP", text_color=BLACK, text_size=20, exit_on_click=False, color=WHITE)
 
         self.pieces = {'k': [King(1, float('inf'), 'b', 'k', pygame.image.load(os.path.join(images, "bk.png")))],
                        'K': [King(1, float('inf'), 'w', 'k', pygame.image.load(os.path.join(images, "wk.png")))],
@@ -857,7 +858,6 @@ class Board:
         self.black_in_check = False
         self.white_in_check = False
         self.en_passant_square = None
-
     def clear_board(self):
         self.piece_nums = {}
         for row in self.grid:
@@ -1339,6 +1339,16 @@ class Board:
         pass
 
     def color_tour(self, last_sqs, been_there):
+        pos = pygame.mouse.get_pos()
+        over = self.Knights_Tour_button.isOver(pos)
+        for event in pygame.event.get():
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_d:
+                    return -1
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if over:
+                    return -1
+
         i = 1
         ARROW_SURFACE.fill((0, 0, 0, 0))
         leng = len(last_sqs)
@@ -1360,14 +1370,17 @@ class Board:
 
         self.draw()
         WIN.blit(ARROW_SURFACE, (0, 0))
+        self.Knights_Tour_button.drawButton()
         pygame.display.update()
         CLOCK.tick(25)
 
     def Tour(self, draw, knight: Knight, been_there, warnsdorff, just_one, last_sqs=None):
+
         been_there.add(knight.Square)
         if len(been_there) == KNIGHTS_TOUR_COLS*KNIGHTS_TOUR_COLS + 1:
             if draw:
-                self.color_tour(last_sqs, been_there)
+                if self.color_tour(last_sqs, been_there) == -1:
+                    return -1
             if just_one:
                 return -1
 
@@ -1380,8 +1393,10 @@ class Board:
         num = 0
         for move in knight.Moves:
             if draw:
+
                 last_sqs.append(knight.Square)
-                self.color_tour(last_sqs, been_there)
+                if self.color_tour(last_sqs, been_there) == -1:
+                    return -1
 
                 knight.Move_Tour(move)
                 option = self.Tour(draw, knight, been_there.copy(), warnsdorff, just_one, last_sqs.copy())
@@ -1397,6 +1412,7 @@ class Board:
         return num
 
     def Knights_Tour(self, draw=False, warnsdorff=False, just_one=False):
+
         self.destroy_all()
         start = time()
         for i in range(KNIGHTS_TOUR_COLS):
@@ -1411,12 +1427,18 @@ class Board:
                     number_of_tours = self.Tour(draw, knight, {True}, warnsdorff, just_one)
 
                 if just_one:
-                    print(f"Found Tour starting at square {i}{j} in time {time() - start2}")
-                    sleep(3)
+                    if number_of_tours != -1:
+                        print(f"Found Tour starting at square {i}{j} in time {time() - start2}")
+                        sleep(1)
                     self.destroy_all()
                     self.start_pos()
                     return
                 else:
+                    if number_of_tours == -1:
+                        self.clear_board()
+                        self.destroy_all()
+                        self.start_pos()
+                        return
                     print(f"Found All Tours: {number_of_tours}, starting at square {i}{j} in time {time() - start2}")
 
 
@@ -1578,7 +1600,7 @@ def tour_size(num, menu):
     KNIGHTS_TOUR_COLS += num
     if KNIGHTS_TOUR_COLS > 8:
         KNIGHTS_TOUR_COLS -= 1
-    if KNIGHTS_TOUR_COLS < 4:
+    if KNIGHTS_TOUR_COLS < 5:
         KNIGHTS_TOUR_COLS += 1
     menu.buttons[0].update_text(f"Knight's Tour: Board size {KNIGHTS_TOUR_COLS}")
 
@@ -1669,9 +1691,7 @@ def main(window):
                 clicked = False
 
 
-# try:
-#     main(WIN)
-#
-# except FileNotFoundError:
-#     print("your working directory is not set")
-main(WIN)
+try:
+    main(WIN)
+except FileNotFoundError:
+    print("your working directory is not set")
