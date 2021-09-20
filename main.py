@@ -2,7 +2,7 @@ import os
 import pickle
 import sys
 from time import *
-
+import pymenu
 import numpy as np
 import pygame
 
@@ -209,10 +209,6 @@ class Piece:
         self.Square = square
         self.Moves = []
 
-    def kill(self):
-        if self.Square is not None:
-            self.Square.Piece_on_Square = None
-        self.Square = None
 
     def on_board(self):
         return self.Square is not None
@@ -371,6 +367,11 @@ class King(Piece):
 
     def __repr__(self):
         return str(self.Square) + self.Name + self.Color
+    def kill(self):
+        if self.Square is not None:
+            self.Square.Piece_on_Square = None
+        self.Square = None
+        self.king_moved = False
 
     def can_castle(self, board, side: str = None):
         # black
@@ -496,8 +497,6 @@ class King(Piece):
 
 
 class Quin(Piece):
-    pass
-
     def Generate_Moves(self, Playing_board, just_update_squares=False):
         if not just_update_squares:
             self.Moves = []
@@ -515,10 +514,22 @@ class Quin(Piece):
         check_right_diag(Playing_board, color, x_pos, y_pos, self, just_update_squares)
         check_left_diag(Playing_board, color, x_pos, y_pos, self, just_update_squares)
 
+    def kill(self):
+        if self.Square is not None:
+            self.Square.Piece_on_Square = None
+        self.Square = None
+
 
 class Pawn(Piece):
     def __init__(self, id, value, color, name, image, square=None, number=1):
         super().__init__(id, value, color, name, image, square, number)
+        self.moved_flag = False
+        self.en_passant = False
+
+    def kill(self):
+        if self.Square is not None:
+            self.Square.Piece_on_Square = None
+        self.Square = None
         self.moved_flag = False
         self.en_passant = False
 
@@ -615,6 +626,13 @@ class Rook(Piece):
         self.rook_moved = False
         self.rook_type = None
 
+    def kill(self):
+        if self.Square is not None:
+            self.Square.Piece_on_Square = None
+        self.Square = None
+        self.rook_moved = False
+        self.rook_type = None
+
     def Generate_Moves(self, Playing_board, just_update_squares=False):
         if not just_update_squares:
             self.Moves = []
@@ -633,6 +651,11 @@ class Knight(Piece):
     def __init__(self, id, value, color, name, image, square=None, number=1):
         super().__init__(id, value, color, name, image, square, number)
         self.min_move = 10
+
+    def kill(self):
+        if self.Square is not None:
+            self.Square.Piece_on_Square = None
+        self.Square = None
 
     # if ((abs(i - self.Pos[0]) + abs(j - self.Pos[1])) == 3 and (i > 0) and (j > 0) and j < board_size + 1 and i <
     # board_size + 1):
@@ -697,7 +720,6 @@ class Knight(Piece):
 
 
 class Bishop(Piece):
-
     def Generate_Moves(self, Playing_board, just_update_squares=False):
         if not just_update_squares:
             self.Moves = []
@@ -707,7 +729,10 @@ class Bishop(Piece):
         color = self.Color
         check_right_diag(Playing_board, color, x_pos, y_pos, self, just_update_squares)
         check_left_diag(Playing_board, color, x_pos, y_pos, self, just_update_squares)
-
+    def kill(self):
+        if self.Square is not None:
+            self.Square.Piece_on_Square = None
+        self.Square = None
 
 class Board:
     def __init__(self, window):
@@ -750,9 +775,8 @@ class Board:
                        'P': [Pawn(6, 1, "w", 'P', pygame.image.load(os.path.join(images, 'wp.png')), number=number) for
                              number in
                              range(1, 9)]}
-
+        self.set_board()
     def draw(self):
-
         col_range = range(COLS)
         for i in col_range:
             # for row in self.grid:
@@ -762,6 +786,13 @@ class Board:
                 square.draw_square(self.window)
                 if square.draw_dot:
                     pygame.draw.circle(WIN, BLACK, square.rect.center, 3)
+
+    def flip_the_board(self):
+        if self.flip:
+            self.flip = False
+        else:
+            self.flip = True
+        self.start_again()
 
     def King_in_Check(self):
         kings = self.pieces['k'] + self.pieces['K']
@@ -802,11 +833,15 @@ class Board:
                 self.grid[i].append(square)
 
     def destroy_all(self):
+
         for row in self.grid:
             for square in row:
+                square.Color = square.Holder
                 piece: Piece = square.Piece_on_Square
+
                 if piece is not None:
                     piece.kill()
+
 
         self.piece_nums = {}
         self.turn = None
@@ -816,7 +851,7 @@ class Board:
         self.white_castle_quin = False
         self.white_castle_king = False
         self.legal_moves = {}
-        self.flip = False
+
         self.made_ill = False
         self.piece_nums = {}
         self.black_in_check = False
@@ -1142,23 +1177,23 @@ class Board:
             if white_pawn.Square is not None:
                 if white_pawn.Square.Y != white_line:
                     white_pawn.moved_flag = True
-
-    def grid_to_numpy_arr(self):
-        matrix = np.zeros((COLS, COLS, len(chess_dict['p'])))
-        x = 0
-        for row in self.grid:
-            y = 0
-            for square in row:
-                piece = square.Piece_on_Square
-                if piece is not None:
-                    name = piece.Name
-                else:
-                    name = '.'
-                matrix[y, x] = chess_dict[name]
-                y += 1
-            x += 1
-
-        return matrix
+    #
+    # def grid_to_numpy_arr(self):
+    #     matrix = np.zeros((COLS, COLS, len(chess_dict['p'])))
+    #     x = 0
+    #     for row in self.grid:
+    #         y = 0
+    #         for square in row:
+    #             piece = square.Piece_on_Square
+    #             if piece is not None:
+    #                 name = piece.Name
+    #             else:
+    #                 name = '.'
+    #             matrix[y, x] = chess_dict[name]
+    #             y += 1
+    #         x += 1
+    #
+    #     return matrix
 
     def update_rook_types(self):
 
@@ -1256,6 +1291,11 @@ class Board:
         elif self.turn == 'b':
             self.turn = 'w'
 
+    def reset_colors(self):
+        for row in self.grid:
+            for sq in row:
+                sq.Color = sq.Holder
+
     def update_colors(self):
         for row in self.grid:
             for square in row:
@@ -1286,8 +1326,8 @@ class Board:
             self.update_colors()
 
     def start_pos(self):
-        self.flip = False
-        self.parse_fen_code('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KkQq')
+
+        self.parse_fen_code('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KkQq', self.flip)
         self.update_rook_types()
         self.Update_Square_Controllers()
         self.King_in_Check()
@@ -1298,10 +1338,39 @@ class Board:
     def numpy_to_grid(self, original, result):
         pass
 
-    def Tour(self, draw, knight: Knight, been_there, warnsdorff, start_time):
+    def color_tour(self, last_sqs, been_there):
+        i = 1
+        ARROW_SURFACE.fill((0, 0, 0, 0))
+        leng = len(last_sqs)
+        while i < leng and leng > 1:
+            pygame.draw.line(ARROW_SURFACE, BLUE, last_sqs[i].rect.center, last_sqs[i - 1].rect.center)
+            i += 1
+
+        factor = 0.25
+        for row in self.grid:
+            for sq in row:
+                if sq in been_there:
+                    if sq.Holder == DARK_BROWN:
+                        r, g, b = DARK_BROWN
+                    else:
+                        r, g, b = LIGHT_BROWN
+                    sq.Color = (r * factor, g * factor, b * factor)
+                else:
+                    sq.Color = sq.Holder
+
+        self.draw()
+        WIN.blit(ARROW_SURFACE, (0, 0))
+        pygame.display.update()
+        CLOCK.tick(25)
+
+    def Tour(self, draw, knight: Knight, been_there, warnsdorff, just_one, last_sqs=None):
         been_there.add(knight.Square)
         if len(been_there) == KNIGHTS_TOUR_COLS*KNIGHTS_TOUR_COLS + 1:
-            sleep(5)
+            if draw:
+                self.color_tour(last_sqs, been_there)
+            if just_one:
+                return -1
+
             return 1
 
         knight.Generate_Tour_Moves(self, been_there, warnsdorff)
@@ -1310,54 +1379,55 @@ class Board:
 
         num = 0
         for move in knight.Moves:
-            last_sq = knight.Square
-            knight.Move_Tour(move)
-
             if draw:
-                #CLOCK.tick(60)
-                factor = 0.15
-                for row in self.grid:
-                    for sq in row:
-                        if sq in been_there:
-                            if sq.Holder == DARK_BROWN:
-                                r, g, b = DARK_BROWN
-                            else:
-                                r, g, b = LIGHT_BROWN
-                            sq.Color = (r * factor, g * factor, b * factor)
-                            #sq.Color = (10, 10, 10)
+                last_sqs.append(knight.Square)
+                self.color_tour(last_sqs, been_there)
 
-                        else:
-                            sq.Color = sq.Holder
-                self.draw()
-                pygame.draw.line(ARROW_SURFACE, BLUE, last_sq.rect.center, knight.Square.rect.center, width=1)
-                WIN.blit(ARROW_SURFACE, (0, 0))
-                pygame.display.update()
+                knight.Move_Tour(move)
+                option = self.Tour(draw, knight, been_there.copy(), warnsdorff, just_one, last_sqs.copy())
 
-            num += self.Tour(draw, knight, been_there.copy(), warnsdorff, start_time)
+            else:
+                knight.Move_Tour(move)
+                option = self.Tour(draw, knight, been_there.copy(), warnsdorff, just_one)
+
+            if option == -1:
+                return -1
+            num += option
 
         return num
 
-    def Knights_Tour(self, draw=False, warnsdorff=False):
-        # sleep(1)
+    def Knights_Tour(self, draw=False, warnsdorff=False, just_one=False):
+        self.destroy_all()
         start = time()
         for i in range(KNIGHTS_TOUR_COLS):
             for j in range(KNIGHTS_TOUR_COLS):
-
-                square = self.grid[i][j]
-                square.set_piece("N", self.pieces, self.piece_nums)
-
-                knight = square.Piece_on_Square
-                if draw:
-                    self.draw()
-                    pygame.display.update()
+                knight = self.grid[i][j].set_piece("N", self.pieces, self.piece_nums)
 
                 start2 = time()
-                print(self.Tour(draw, knight, {True}, warnsdorff, time()))
-                print(time() - start2)
+                if draw:
+                    number_of_tours = self.Tour(draw, knight, {True}, warnsdorff, just_one, [])
+                    ARROW_SURFACE.fill((0, 0, 0, 0))
+                else:
+                    number_of_tours = self.Tour(draw, knight, {True}, warnsdorff, just_one)
+
+                if just_one:
+                    print(f"Found Tour starting at square {i}{j} in time {time() - start2}")
+                    sleep(3)
+                    self.destroy_all()
+                    self.start_pos()
+                    return
+                else:
+                    print(f"Found All Tours: {number_of_tours}, starting at square {i}{j} in time {time() - start2}")
+
 
                 self.clear_board()
-        print(time() - start)
+        print(time()-start)
+        self.destroy_all()
+        self.start_pos()
 
+    def start_again(self):
+        self.destroy_all()
+        self.start_pos()
 
 # X IS NUMBER OF COLUMN
 class Square:
@@ -1420,7 +1490,6 @@ class Square:
     # Gets a string that represents the Piece
     # the First setting of the piece
     def set_piece(self, piece_str, pieces, piece_num):
-
         try:
             piece_num[piece_str]
         except KeyError:
@@ -1428,36 +1497,37 @@ class Square:
         self.Piece_on_Square = pieces[piece_str][piece_num[piece_str] - 1]
         piece_num[piece_str] += 1
         self.Piece_on_Square.Square = self
+        return self.Piece_on_Square
 
 
-def model_LEL(board):
-    start_grid = np.array([[chess_dict['r'], chess_dict['b'], chess_dict['b'], chess_dict['q'], chess_dict['k'],
-                            chess_dict['b'], chess_dict['b'], chess_dict['r']],
-                           [chess_dict['p'], chess_dict['p'], chess_dict['p'], chess_dict['p'], chess_dict['p'],
-                            chess_dict['p'], chess_dict['p'], chess_dict['p']],
-                           [chess_dict['.'], chess_dict['.'], chess_dict['.'], chess_dict['.'], chess_dict['.'],
-                            chess_dict['.'], chess_dict['.'], chess_dict['.']],
-                           [chess_dict['.'], chess_dict['.'], chess_dict['.'], chess_dict['.'], chess_dict['.'],
-                            chess_dict['.'], chess_dict['.'], chess_dict['.']],
-                           [chess_dict['.'], chess_dict['.'], chess_dict['.'], chess_dict['.'], chess_dict['.'],
-                            chess_dict['.'], chess_dict['.'], chess_dict['.']],
-                           [chess_dict['.'], chess_dict['.'], chess_dict['.'], chess_dict['.'], chess_dict['.'],
-                            chess_dict['.'], chess_dict['.'], chess_dict['.']],
-                           [chess_dict['P'], chess_dict['P'], chess_dict['P'], chess_dict['P'], chess_dict['P'],
-                            chess_dict['P'], chess_dict['P'], chess_dict['P']],
-                           [chess_dict['R'], chess_dict['N'], chess_dict['B'], chess_dict['Q'], chess_dict['K'],
-                            chess_dict['B'], chess_dict['N'], chess_dict['R']]])
-    X = load('X')
-    y = load('y')
-    X = X.reshape(X.shape[0], -1).astype(np.float32)
-    y = y.reshape(y.shape[0], -1).astype(np.float32)
-    len_x = len(X)
-    len_y = len(y)
-    X_test = X[int(len_x * 0.8) + 1:]
-    y_test = y[int(len_y * 0.8) + 1:]
-
-    X = X[:int(len_x * 0.8)]
-    y = y[:int(len_y * 0.8)]
+# def model_LEL(board):
+    # start_grid = np.array([[chess_dict['r'], chess_dict['b'], chess_dict['b'], chess_dict['q'], chess_dict['k'],
+    #                         chess_dict['b'], chess_dict['b'], chess_dict['r']],
+    #                        [chess_dict['p'], chess_dict['p'], chess_dict['p'], chess_dict['p'], chess_dict['p'],
+    #                         chess_dict['p'], chess_dict['p'], chess_dict['p']],
+    #                        [chess_dict['.'], chess_dict['.'], chess_dict['.'], chess_dict['.'], chess_dict['.'],
+    #                         chess_dict['.'], chess_dict['.'], chess_dict['.']],
+    #                        [chess_dict['.'], chess_dict['.'], chess_dict['.'], chess_dict['.'], chess_dict['.'],
+    #                         chess_dict['.'], chess_dict['.'], chess_dict['.']],
+    #                        [chess_dict['.'], chess_dict['.'], chess_dict['.'], chess_dict['.'], chess_dict['.'],
+    #                         chess_dict['.'], chess_dict['.'], chess_dict['.']],
+    #                        [chess_dict['.'], chess_dict['.'], chess_dict['.'], chess_dict['.'], chess_dict['.'],
+    #                         chess_dict['.'], chess_dict['.'], chess_dict['.']],
+    #                        [chess_dict['P'], chess_dict['P'], chess_dict['P'], chess_dict['P'], chess_dict['P'],
+    #                         chess_dict['P'], chess_dict['P'], chess_dict['P']],
+    #                        [chess_dict['R'], chess_dict['N'], chess_dict['B'], chess_dict['Q'], chess_dict['K'],
+    #                         chess_dict['B'], chess_dict['N'], chess_dict['R']]])
+    # X = load('X')
+    # y = load('y')
+    # X = X.reshape(X.shape[0], -1).astype(np.float32)
+    # y = y.reshape(y.shape[0], -1).astype(np.float32)
+    # len_x = len(X)
+    # len_y = len(y)
+    # X_test = X[int(len_x * 0.8) + 1:]
+    # y_test = y[int(len_y * 0.8) + 1:]
+    #
+    # X = X[:int(len_x * 0.8)]
+    # y = y[:int(len_y * 0.8)]
 
     # model = NN.Model()
     # model.add(NN.Layer_Dense(768, 128))
@@ -1503,13 +1573,30 @@ def model_LEL(board):
     #
     # save("y", np.array(y))
 
+def tour_size(num, menu):
+    global KNIGHTS_TOUR_COLS
+    KNIGHTS_TOUR_COLS += num
+    if KNIGHTS_TOUR_COLS > 8:
+        KNIGHTS_TOUR_COLS -= 1
+    if KNIGHTS_TOUR_COLS < 4:
+        KNIGHTS_TOUR_COLS += 1
+    menu.buttons[0].update_text(f"Knight's Tour: Board size {KNIGHTS_TOUR_COLS}")
 
 def main(window):
     board = Board(window)
-    board.set_board()
 
-    board.Knights_Tour(draw=True, warnsdorff=True)
-    exit()
+    menu = pymenu.Menu(WIN, 600, 200, button_to_exit='d')
+    menu.add_button(BLACK, text=f"Knight's Tour: Board size {KNIGHTS_TOUR_COLS}", text_size=15)
+    menu.add_button(BLACK, lambda: board.Knights_Tour(draw=True, warnsdorff=True, just_one=True), text="Visualize A Knight's Tour", text_size=15)
+    menu.add_button(BLACK, lambda: board.Knights_Tour(draw=True, warnsdorff=True, just_one=False),
+                    text="Visualize All Knight's Tour", text_size=15)
+    menu.add_button(BLACK, lambda: tour_size(+1, menu), text="+ Tour Board Size", exit_on_click=False)
+    menu.add_button(BLACK, lambda: tour_size(-1, menu), text="- Tour Board Size", exit_on_click=False)
+    menu.add_button(BLACK, lambda: board.flip_the_board(), text="Flip board")
+    menu.add_button(BLACK, lambda: board.start_again(), text="Starting Position")
+
+
+
 
 
     board.start_pos()
@@ -1533,10 +1620,9 @@ def main(window):
                     running = False
                     break
                 if event.key == pygame.K_d:
-                    board.destroy_all()
-                    board.Knights_Tour()
-                    board.destroy_all()
-                    board.start_pos()
+                    menu.draw_menu()
+
+
 
             if pygame.mouse.get_pressed(3)[0]:
                 if not clicked:
