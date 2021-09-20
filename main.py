@@ -1,5 +1,6 @@
 import os
 import pickle
+import random
 import sys
 from time import *
 import pymenu
@@ -819,6 +820,7 @@ class Board:
                 square.control_c = []
 
     def set_board(self):
+        self.grid = []
         for i in range(COLS):
             self.grid.append([])
 
@@ -834,12 +836,10 @@ class Board:
                 self.grid[i].append(square)
 
     def destroy_all(self):
-
         for row in self.grid:
             for square in row:
                 square.Color = square.Holder
                 piece: Piece = square.Piece_on_Square
-
                 if piece is not None:
                     piece.kill()
 
@@ -858,6 +858,7 @@ class Board:
         self.black_in_check = False
         self.white_in_check = False
         self.en_passant_square = None
+
     def clear_board(self):
         self.piece_nums = {}
         for row in self.grid:
@@ -1177,6 +1178,7 @@ class Board:
             if white_pawn.Square is not None:
                 if white_pawn.Square.Y != white_line:
                     white_pawn.moved_flag = True
+
     #
     # def grid_to_numpy_arr(self):
     #     matrix = np.zeros((COLS, COLS, len(chess_dict['p'])))
@@ -1412,40 +1414,46 @@ class Board:
         return num
 
     def Knights_Tour(self, draw=False, warnsdorff=False, just_one=False):
+        global COLS
+        global KNIGHTS_TOUR_COLS
+        global SQUARE_SIZE
+        if KNIGHTS_TOUR_COLS > COLS:
+            COLS = KNIGHTS_TOUR_COLS
+            SQUARE_SIZE = WIDTH // COLS
 
+        self.set_board()
         self.destroy_all()
         start = time()
-        for i in range(KNIGHTS_TOUR_COLS):
-            for j in range(KNIGHTS_TOUR_COLS):
-                knight = self.grid[i][j].set_piece("N", self.pieces, self.piece_nums)
+        for i, j in zip(range(KNIGHTS_TOUR_COLS), range(KNIGHTS_TOUR_COLS)):
+            if just_one:
+                i, j = np.random.randint(0, KNIGHTS_TOUR_COLS), np.random.randint(0, KNIGHTS_TOUR_COLS)
+            knight = self.grid[i][j].set_piece("N", self.pieces, self.piece_nums)
 
-                start2 = time()
-                if draw:
-                    number_of_tours = self.Tour(draw, knight, {True}, warnsdorff, just_one, [])
-                    ARROW_SURFACE.fill((0, 0, 0, 0))
-                else:
-                    number_of_tours = self.Tour(draw, knight, {True}, warnsdorff, just_one)
+            start2 = time()
+            if draw:
+                number_of_tours = self.Tour(draw, knight, {True}, warnsdorff, just_one, [])
+                ARROW_SURFACE.fill((0, 0, 0, 0))
+            else:
+                number_of_tours = self.Tour(draw, knight, {True}, warnsdorff, just_one)
 
+            if number_of_tours == -1:
                 if just_one:
-                    if number_of_tours != -1:
-                        print(f"Found Tour starting at square {i}{j} in time {time() - start2}")
-                        sleep(1)
-                    self.destroy_all()
-                    self.start_pos()
-                    return
-                else:
-                    if number_of_tours == -1:
-                        self.clear_board()
-                        self.destroy_all()
-                        self.start_pos()
-                        return
-                    print(f"Found All Tours: {number_of_tours}, starting at square {i}{j} in time {time() - start2}")
+                    print(f"Found Tour starting at square {i}, {j} in time {time() - start2}")
+                    sleep(3)
+                break
 
+                print(f"Found All Tours: {number_of_tours}, starting at square {i}{j} in time {time() - start2}")
+            self.clear_board()
 
-                self.clear_board()
-        print(time()-start)
+        print(time() - start)
         self.destroy_all()
+        if COLS > 8:
+            COLS = 8
+            SQUARE_SIZE = WIDTH // COLS
+        self.set_board()
         self.start_pos()
+        return
+
 
     def start_again(self):
         self.destroy_all()
@@ -1458,6 +1466,7 @@ class Square:
         self.Color = None
         self.X = X
         self.Y = Y
+
         self.rect = pygame.Rect(X * SQUARE_SIZE, Y * SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE)
         self.control = {}
         self.control_c = []
@@ -1466,6 +1475,9 @@ class Square:
 
     def __repr__(self):
         return "(" + str(self.X) + "," + str(self.Y) + ")"
+
+    def edit_square_size(self):
+        self.rect = pygame.Rect(self.X * SQUARE_SIZE, self.Y * SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE)
 
     def reset_control(self):
         self.control = {}
@@ -1598,8 +1610,7 @@ class Square:
 def tour_size(num, menu):
     global KNIGHTS_TOUR_COLS
     KNIGHTS_TOUR_COLS += num
-    if KNIGHTS_TOUR_COLS > 8:
-        KNIGHTS_TOUR_COLS -= 1
+
     if KNIGHTS_TOUR_COLS < 5:
         KNIGHTS_TOUR_COLS += 1
     menu.buttons[0].update_text(f"Knight's Tour: Board size {KNIGHTS_TOUR_COLS}")
