@@ -1018,13 +1018,11 @@ class Board:
 
         c = pygame.time.Clock()
         for move in moves:
-            flag = True
-            if draw:
-                # while flag:
-                #    for event in pygame.event.get():
-                #        if event.type == pygame.MOUSEBUTTONUP:
-                #            flag = False
 
+            if draw:
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        pygame.quit()
 
                 self.draw()
                 pygame.display.update()
@@ -1058,7 +1056,7 @@ class Board:
                     if event.key == pygame.K_RETURN or event.key == pygame.K_ESCAPE:
                         getting_text = False
                         break
-                    if event.key == pygame.K_v and pygame.key.get_mods():
+                    elif event.key == pygame.K_v and pygame.key.get_mods():
                         getting_text = False
                         PGN_text = str(pyperclip.paste())
                         pygame.display.update(input_rect)
@@ -1066,7 +1064,6 @@ class Board:
                         text_surface = constants['font'].render(PGN_text, True, (255, 255, 255))
                         self.window.blit(text_surface, (input_rect.x + 5, input_rect.y + 5))
 
-                        break
                     elif event.key == pygame.K_BACKSPACE:
                         PGN_text = PGN_text[:-1]
                     else:
