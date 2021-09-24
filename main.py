@@ -6,6 +6,7 @@ from time import *
 import pymenu
 import numpy as np
 import pygame
+import pyperclip
 
 
 sys.setrecursionlimit(25200)
@@ -941,7 +942,9 @@ class Board:
 
     # PGN example - Ruy Lopez
     # 1. e4 e5 2. Nf3 Nc6 3. Bb5 a6
-    def parse_PGN(self, PGN_code: str, data, draw=True):
+
+    def parse_PGN(self, PGN_code: str, data=None, draw=True, fps = 1):
+
         moves = []
         i = 0
         while i < len(PGN_code):
@@ -1022,11 +1025,13 @@ class Board:
                 #        if event.type == pygame.MOUSEBUTTONUP:
                 #            flag = False
 
-                # c.tick(60)
+
                 self.draw()
                 pygame.display.update()
+                c.tick(fps)
+            if data is not None:
+                data.append(self.grid_to_numpy_arr())
 
-            data.append(self.grid_to_numpy_arr())
             if color_index % 2 == 0:  # if even
                 color = 'w'
             else:
@@ -1038,6 +1043,44 @@ class Board:
             self.reset_control()
 
             color_index += 1
+
+
+    def parse_PGN_Wrapper(self, draw=True, fps=1):
+        input_rect = pygame.Rect(200, 200, 400, 400)
+        PGN_text = ''
+        getting_text = True
+        while getting_text:
+            CLOCK.tick(60)
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                elif event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_RETURN or event.key == pygame.K_ESCAPE:
+                        getting_text = False
+                        break
+                    if event.key == pygame.K_v and pygame.key.get_mods():
+                        getting_text = False
+                        PGN_text = str(pyperclip.paste())
+                        pygame.display.update(input_rect)
+                        pygame.draw.rect(self.window, BLACK, input_rect)
+                        text_surface = constants['font'].render(PGN_text, True, (255, 255, 255))
+                        self.window.blit(text_surface, (input_rect.x + 5, input_rect.y + 5))
+
+                        break
+                    elif event.key == pygame.K_BACKSPACE:
+                        PGN_text = PGN_text[:-1]
+                    else:
+                        PGN_text = PGN_text + event.unicode
+
+
+            pygame.display.update(input_rect)
+            pygame.draw.rect(self.window, BLACK, input_rect)
+            text_surface = constants['font'].render(PGN_text, True, (255, 255, 255))
+            self.window.blit(text_surface, (input_rect.x + 5, input_rect.y + 5))
+
+
+        self.parse_PGN(PGN_text, draw=draw, fps=fps)
+
 
     # PGN move maker - with specific column
     def action_with_col(self, code, target_square, col):
@@ -1627,6 +1670,8 @@ def main(window):
     menu.add_button(BLACK, lambda: tour_size(-1, menu), text="- Tour Board Size", exit_on_click=False)
     menu.add_button(BLACK, lambda: board.flip_the_board(), text="Flip board")
     menu.add_button(BLACK, lambda: board.start_again(), text="Starting Position")
+    PGN_code = "1. d4 d5 2. e4 e5 3. exd5 exd4"
+    menu.add_button(BLACK, lambda: board.parse_PGN_Wrapper(True, fps=5), text="Parse PGN")
 
 
 
