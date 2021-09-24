@@ -14,7 +14,7 @@ ORANGE = (255, 128, 0)
 BRIGHT_GREEN = (102, 250, 250)
 
 pygame.font.init()
-
+# walak teeeeeel
 
 class Button:
     def __init__(self, surface, on_click_func, color, x, y, width, height, text_color, text, text_size, exit_on_click, id=None):
@@ -133,7 +133,7 @@ class Menu:
             pygame.display.update()
 
     def add_button(self, color, on_click_function=lambda: None, text='', text_color=BLACK, text_size=20, exit_on_click=True):
-        x, y = self.width * 0.1, len(self.buttons) * (self.height * 0.14) + 10
+        x, y = self.width * 0.1, len(self.buttons) * (self.height * 0.115) + 10
         width, height = self.width * 0.8, self.height * 0.1
 
         new_button = Button(self.pause_menu_surface, on_click_function, color, x, y, width, height, text_color, text,
