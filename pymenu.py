@@ -43,7 +43,7 @@ class Button:
         #    pygame.draw.rect(self.surface, outline, (self.x - 2, self.y - 2, self.width + 4, self.height + 4), 0)
         pygame.draw.rect(self.surface, self.color, (self.x, self.y, self.width, self.height))
         if self.text != '':
-            font = pygame.font.SysFont('arial', self.text_size)
+            font = pygame.font.SysFont('arial', int(self.text_size*0.9))
             text = font.render(self.text, True, self.text_color)
             self.surface.blit(text, (
                 self.x + (self.width // 2 - text.get_width() // 2),

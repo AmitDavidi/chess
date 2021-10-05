@@ -16,8 +16,8 @@ CLOCK = pygame.time.Clock()
 cwd = os.getcwd()
 images = os.path.join(cwd, "Resources")
 
-HEIGHT = 700
-WIDTH = 700
+HEIGHT = 1000
+WIDTH = 1000
 COLS = 8
 KNIGHTS_TOUR_COLS = COLS
 
@@ -689,8 +689,18 @@ class Knight(Piece):
         # return counter
         if counter <= self.min_move:
             self.min_move = counter
-            self.Moves.remove(square_to_check)
-            self.Moves.insert(0, square_to_check)
+            if counter == self.min_move:
+                kek = (KNIGHTS_TOUR_COLS-1)/2
+          
+                if abs(square_to_check.X - kek)  + abs(square_to_check.Y - kek) >= abs(self.Moves[0].X - kek) + abs(self.Moves[0].Y - kek):
+                    #farthest square rule
+                    self.Moves.remove(square_to_check)
+                    self.Moves.insert(0, square_to_check)
+
+
+            else:
+                self.Moves.remove(square_to_check)
+                self.Moves.insert(0, square_to_check)
 
 
 
@@ -731,6 +741,7 @@ class Bishop(Piece):
         color = self.Color
         check_right_diag(Playing_board, color, x_pos, y_pos, self, just_update_squares)
         check_left_diag(Playing_board, color, x_pos, y_pos, self, just_update_squares)
+
     def kill(self):
         if self.Square is not None:
             self.Square.Piece_on_Square = None
@@ -767,7 +778,7 @@ class Board:
                              number in range(1, 9)],
                        'n': [Knight(4, 3, "b", 'n', pygame.image.load(os.path.join(images, 'bn.png')), number=number)
                              for number in range(1, 9)],
-                       'N': [Knight(4, 3, "w", 'N', pygame.image.load(os.path.join(images, 'wn.png')), number=number)
+                       'N': [Knight(4, 3, "w", 'N', pygame.transform.scale(pygame.image.load(os.path.join(images, 'wn.png')),(HEIGHT//KNIGHTS_TOUR_COLS, HEIGHT//KNIGHTS_TOUR_COLS)), number=number)
                              for number in range(1, 9)],
                        'b': [Bishop(5, 3, "b", 'b', pygame.image.load(os.path.join(images, 'bb.png')), number=number)
                              for number in range(1, 9)],
@@ -1414,18 +1425,40 @@ class Board:
         WIN.blit(ARROW_SURFACE, (0, 0))
         self.Knights_Tour_button.drawButton()
         pygame.display.update()
-        CLOCK.tick(25)
+        
+
+    def draw_youtube(self, last_sqs, knight):
+        lastSq = None
+        factor = 0.25
+
+        print(knight.Square)
+        for sq in last_sqs:
+            knight.Move_Tour(sq)
+      
+            print("lel")
+            if lastSq is not None:
+                pygame.draw.line(ARROW_SURFACE, BLUE, sq.rect.center, lastSq.rect.center)
+            r, g, b = sq.Color
+            sq.Color = (r * factor, g * factor, b * factor)
+            lastSq = sq
+            self.draw()
+            WIN.blit(ARROW_SURFACE, (0, 0))
+            pygame.display.update()
+            CLOCK.tick(160)
+            
 
     def Tour(self, draw, knight: Knight, been_there, warnsdorff, just_one, last_sqs=None):
 
         been_there.add(knight.Square)
         if len(been_there) == KNIGHTS_TOUR_COLS*KNIGHTS_TOUR_COLS + 1:
             if draw:
-                if self.color_tour(last_sqs, been_there) == -1:
+                last_sqs.append(knight.Square)
+                if self.color_tour(last_sqs.copy(), been_there) == -1:
                     return -1
             if just_one:
+                # self.draw_youtube(last_sqs, knight)
                 return -1
-
+            
             return 1
 
         knight.Generate_Tour_Moves(self, been_there, warnsdorff)
@@ -1435,18 +1468,18 @@ class Board:
         num = 0
         for move in knight.Moves:
             if draw:
-
                 last_sqs.append(knight.Square)
-                if self.color_tour(last_sqs, been_there) == -1:
+                if self.color_tour(last_sqs.copy(), been_there) == -1:
                     return -1
 
                 knight.Move_Tour(move)
                 option = self.Tour(draw, knight, been_there.copy(), warnsdorff, just_one, last_sqs.copy())
-
+                
             else:
                 knight.Move_Tour(move)
                 option = self.Tour(draw, knight, been_there.copy(), warnsdorff, just_one)
-
+               
+            
             if option == -1:
                 return -1
             num += option
