@@ -1,0 +1,7 @@
+numpy==1.17.4
+opencv_python==4.5.3.56
+pygame==2.0.1
+pyperclip==1.8.2
+matplotlib==3.4.3
+nnfs==0.5.1
+numba==0.54.0
